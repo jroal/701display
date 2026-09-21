@@ -19,6 +19,10 @@ constexpr int DISPLAY_WIDTH = 800;
 constexpr int DISPLAY_HEIGHT = 480;
 constexpr int BUFFER_LINES = 40;
 
+// --- Engine Speed Warning Thresholds ---
+constexpr int RPM_PEAK_POWER = 8000;    // Changes bar to Yellow
+constexpr int RPM_REDLINE = 9000;       // Changes bar to Red
+
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *texture = nullptr;
