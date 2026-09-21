@@ -27,6 +27,13 @@ SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *texture = nullptr;
 uint8_t draw_buffer[DISPLAY_WIDTH * BUFFER_LINES * 2];
+lv_point_t mouse_position{0, 0};
+bool mouse_pressed = false;
+
+void read_mouse(lv_indev_t *, lv_indev_data_t *data) {
+    data->point = mouse_position;
+    data->state = mouse_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
 
 void flush_display(lv_display_t *display, const lv_area_t *area, uint8_t *pixel_map) {
     const int width = lv_area_get_width(area);
@@ -84,6 +91,10 @@ int main(int, char **) {
         sizeof(draw_buffer),
         LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(display, flush_display);
+
+    lv_indev_t *mouse = lv_indev_create();
+    lv_indev_set_type(mouse, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(mouse, read_mouse);
     
     // Calls the clean global dashboard creation process
     create_dashboard();
@@ -98,6 +109,17 @@ int main(int, char **) {
         while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT) {
                 running = false;
+            } else if (event.type == SDL_MOUSEMOTION) {
+                mouse_position.x = event.motion.x;
+                mouse_position.y = event.motion.y;
+            } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                mouse_position.x = event.button.x;
+                mouse_position.y = event.button.y;
+                mouse_pressed = true;
+            } else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+                mouse_position.x = event.button.x;
+                mouse_position.y = event.button.y;
+                mouse_pressed = false;
             }
         }
 

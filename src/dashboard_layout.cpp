@@ -5,7 +5,7 @@ lv_obj_t *rpm_bar = nullptr;
 lv_obj_t *rpm_value = nullptr;
 lv_obj_t *simulator_fuel = nullptr;
 lv_obj_t *simulator_fuel_bar = nullptr;
-lv_obj_t *simulator_fuel_percent = nullptr;
+lv_obj_t *simulator_fuel_fill = nullptr;
 
 LV_FONT_DECLARE(lv_font_montserrat_24);
 LV_FONT_DECLARE(lv_font_montserrat_32);
@@ -14,8 +14,8 @@ LV_FONT_DECLARE(lv_font_montserrat_48);
 static void simulator_fuel_reset_event_cb(lv_event_t *event) {
     if (lv_event_get_code(event) == LV_EVENT_CLICKED) {
         lv_label_set_text(simulator_fuel, "3.43 gal");
-        lv_bar_set_value(simulator_fuel_bar, 100, LV_ANIM_OFF);
-        lv_label_set_text(simulator_fuel_percent, "100%");
+        lv_bar_set_value(simulator_fuel_bar, 99, LV_ANIM_OFF);
+        lv_obj_set_width(simulator_fuel_fill, 294);
     }
 }
 
@@ -66,16 +66,20 @@ void create_dashboard() {
     lv_bar_set_value(simulator_fuel_bar, 58, LV_ANIM_OFF);
     lv_obj_add_style(simulator_fuel_bar, &style_fuel_bar, LV_PART_MAIN);
     lv_obj_add_style(simulator_fuel_bar, &style_fuel_indicator, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(simulator_fuel_bar, LV_OPA_TRANSP, LV_PART_INDICATOR);
 
-    simulator_fuel_percent = lv_label_create(simulator_fuel_bar);
-    lv_label_set_text(simulator_fuel_percent, "58%");
-    lv_obj_add_style(simulator_fuel_percent, &style_sub_header, 0);
-    lv_obj_center(simulator_fuel_percent);
+    simulator_fuel_fill = lv_obj_create(screen);
+    lv_obj_set_size(simulator_fuel_fill, 171, 30);
+    lv_obj_align_to(simulator_fuel_fill, simulator_fuel_bar, LV_ALIGN_TOP_LEFT, 1, 1);
+    lv_obj_set_style_bg_color(simulator_fuel_fill, lv_color_hex(0x65D6FF), 0);
+    lv_obj_set_style_bg_opa(simulator_fuel_fill, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(simulator_fuel_fill, 0, 0);
+    lv_obj_set_style_radius(simulator_fuel_fill, 1, 0);
 
     lv_obj_t *fuel_markers = lv_label_create(screen);
     lv_label_set_text(fuel_markers, "E       1/4      1/2      3/4       F");
     lv_obj_add_style(fuel_markers, &style_sub_header, 0);
-    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -175);
+    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -135);
 
     lv_obj_t *temperature = lv_label_create(screen);
     lv_label_set_text(temperature, "Coolant Temperature: 180 F");
