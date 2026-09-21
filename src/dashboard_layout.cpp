@@ -1,5 +1,7 @@
 #include <lvgl.h>
 
+#ifdef PC_SIMULATOR
+
 // Global object handles so they can be read by both loops
 lv_obj_t *rpm_bar = nullptr;
 lv_obj_t *rpm_value = nullptr;
@@ -122,3 +124,5 @@ void create_dashboard() {
     lv_obj_add_style(reset_label, &style_sub_header, 0);
     lv_obj_center(reset_label);
 }
+
+#endif

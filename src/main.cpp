@@ -9,6 +9,8 @@
     // Native Physical Micro-Controller Hardware Drivers
     #include <driver/twai.h> // ESP32 native CAN driver
     #include <Preferences.h> // Non-volatile flash storage management
+    #include <ESP_Panel_Library.h>
+    #include <esp_log.h>
 #endif
 
 // Support both standard project directory formats cleanly
@@ -57,6 +59,71 @@ lv_obj_t * reset_btn;
 lv_obj_t * mpg_label;
 lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
+
+#ifndef PC_SIMULATOR
+ESP_Panel hardwarePanel;
+ESP_PanelLcd *hardwareLcd = nullptr;
+lv_display_t *hardwareDisplay = nullptr;
+alignas(64) static lv_color_t lvglBuffer1[800 * 40];
+alignas(64) static lv_color_t lvglBuffer2[800 * 40];
+static uint8_t flushLogCount = 0;
+
+static void hardware_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t *pixelMap) {
+    if (flushLogCount < 3) {
+        Serial.printf("DISPLAY: flush lcd=%p %d,%d to %d,%d\n", hardwareLcd, area->x1, area->y1, area->x2 + 1, area->y2 + 1);
+        flushLogCount++;
+    }
+    if (hardwareLcd != nullptr) {
+        hardwareLcd->drawBitmap(
+            area->x1,
+            area->y1,
+            area->x2 + 1,
+            area->y2 + 1,
+            pixelMap);
+    }
+    lv_display_flush_ready(display);
+}
+
+static bool hardware_display_init() {
+    Serial.println("DISPLAY: panel init");
+    hardwarePanel.init();
+    Serial.println("DISPLAY: panel begin");
+    hardwarePanel.begin();
+    Serial.println("DISPLAY: panel ready");
+    Serial.println("DISPLAY: get LCD");
+    hardwareLcd = hardwarePanel.getLcd();
+    Serial.println("DISPLAY: got LCD");
+    if (hardwareLcd == nullptr) {
+        Serial.println("LCD initialization failed");
+        return false;
+    }
+
+    Serial.println("DISPLAY: LVGL init");
+    Serial.flush();
+    lv_init();
+    Serial.println("DISPLAY: LVGL initialized");
+    Serial.flush();
+    hardwareDisplay = lv_display_create(800, 480);
+    Serial.println("DISPLAY: display created");
+    Serial.flush();
+    lv_display_set_color_format(hardwareDisplay, LV_COLOR_FORMAT_RGB565);
+    lv_display_set_buffers(
+        hardwareDisplay,
+        lvglBuffer1,
+        lvglBuffer2,
+        sizeof(lvglBuffer1),
+        LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_flush_cb(hardwareDisplay, hardware_flush_cb);
+    lv_display_set_default(hardwareDisplay);
+    Serial.printf("DISPLAY: state cf=%d mode=%d buf=%u timer=%p\n",
+                  static_cast<int>(lv_display_get_color_format(hardwareDisplay)),
+                  static_cast<int>(lv_display_get_render_mode(hardwareDisplay)),
+                  static_cast<unsigned>(lv_display_get_draw_buf_size(hardwareDisplay)),
+                  lv_display_get_refr_timer(hardwareDisplay));
+    Serial.println("DISPLAY: LVGL ready");
+    return true;
+}
+#endif
 
 // --- Tachometer Configuration Metrics ---
 const int32_t RPM_MAX_SCALE = 10000;    // 1,000 RPM over the 9,000 redline limit
@@ -265,11 +332,14 @@ void UI_Layout_Init() {
 
 #ifndef PC_SIMULATOR
 void UIProcessingLoop(void * pvParameters) {
-    lv_init();
-    UI_Layout_Init();
+    Serial.println("UI: task entered");
     unsigned long lastNVSSave = millis();
+    unsigned long lastLvglTick = lastNVSSave;
 
     while(true) {
+        unsigned long currentMillis = millis();
+        lv_tick_inc(currentMillis - lastLvglTick);
+        lastLvglTick = currentMillis;
         lv_timer_handler(); 
 
         xSemaphoreTake(dataMutex, portMAX_DELAY);
@@ -335,7 +405,33 @@ void UIProcessingLoop(void * pvParameters) {
 
 void setup() {
     Serial.begin(115200);
+    delay(1000);
+    Serial.setDebugOutput(true);
+    esp_log_level_set("ESP_Panel", ESP_LOG_DEBUG);
+    Serial.println("BOOT: setup");
+#if ESP_PANEL_BOARD_DEFAULT_USE_CUSTOM
+    Serial.println("CONFIG: custom board enabled");
+#else
+    Serial.println("CONFIG: custom board disabled");
+#endif
+#if ESP_PANEL_BOARD_USE_LCD
+    Serial.println("CONFIG: LCD enabled");
+#else
+    Serial.println("CONFIG: LCD disabled");
+#endif
     dataMutex = xSemaphoreCreateMutex();
+
+    if (!hardware_display_init()) {
+        while (true) {
+            delay(1000);
+        }
+    }
+
+    UI_Layout_Init();
+    lv_display_enable_invalidation(hardwareDisplay, true);
+    lv_obj_invalidate(lv_screen_active());
+    lv_display_refr_timer(lv_display_get_refr_timer(hardwareDisplay));
+    Serial.println("BOOT: UI ready");
 
     nvStorage.begin("bike-fuel", false);
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
@@ -343,8 +439,9 @@ void setup() {
     liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
     nvStorage.end();
 
-    xTaskCreatePinnedToCore(CANProcessingLoop, "CAN_Core0", 4096, NULL, 2, &CANTaskHandle, 0);
-    xTaskCreatePinnedToCore(UIProcessingLoop, "UI_Core1", 8192, NULL, 1, &UITaskHandle, 1);
+    BaseType_t uiTaskResult = xTaskCreatePinnedToCore(UIProcessingLoop, "UI_Core1", 8192, NULL, 1, &UITaskHandle, 1);
+    Serial.printf("BOOT: UI task result %d\n", static_cast<int>(uiTaskResult));
+    Serial.println("BOOT: UI task started");
 }
 
 void loop() {
