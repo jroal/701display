@@ -249,6 +249,8 @@ void UIProcessingLoop(void * pvParameters) {
         // --- INSERT THIS INTERNALLY WITHIN YOUR UIProcessingLoop WHILE(TRUE) ---
         xSemaphoreTake(dataMutex, portMAX_DELAY);
         uint16_t localRPM = liveData.engineRPM; // Pull fresh telemetry intercepted from CAN Core 0
+        float localMPG = liveData.currentMPG;
+        float localDistance = liveData.distanceTraveledKm * 0.621371; // Convert to miles for screen readout
         xSemaphoreGive(dataMutex);
 
         // Apply the value mapping logic down to the screen buffer
@@ -269,17 +271,6 @@ void UIProcessingLoop(void * pvParameters) {
         }
 
 
-        // --- INSERT INTO YOUR UIProcessingLoop WHILE(TRUE) REFRESH BUFFER ---
-        xSemaphoreTake(dataMutex, portMAX_DELAY);
-        float localFuel = liveData.fuelRemaining;
-        int16_t localTemp = liveData.coolantTemp;
-        uint8_t localGear = liveData.currentGear;
-        float localMPG = liveData.currentMPG;
-        float localDistance = liveData.distanceTraveledKm * 0.621371; // Convert to miles for screen readout
-        xSemaphoreGive(dataMutex);
-
-        lv_label_set_text_fmt(fuel_label, "FUEL: %.2f L", localFuel);
-        lv_label_set_text_fmt(temp_label, "TEMP: %d °C", localTemp);
         lv_label_set_text_fmt(mpg_label, "ECONOMY: %.1f MPG (%.1f mi)", localMPG, localDistance);
 
 
@@ -303,7 +294,7 @@ void setup() {
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
     liveData.distanceTraveledKm = nvStorage.getFloat("distance", 0.0); // Recover distance traveled
     liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
-    
+
     nvStorage.end();
 
     xTaskCreatePinnedToCore(CANProcessingLoop, "CAN_Core0", 4096, NULL, 2, &CANTaskHandle, 0);

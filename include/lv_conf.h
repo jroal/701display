@@ -29,7 +29,7 @@
 /*====================
    🎨 GRAPHICS ENGINE ADVANCED CONFIGURATION
  *====================*/
-#define LV_COLOR_DEPTH 16     /* 16-bit RGB565 required by the Waveshare panel interface */
+#define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565 /* 16-bit RGB565 required by the Waveshare panel interface */
 
 /* Anti-aliasing handles smoothing needle gauge curves under vibration */
 #define LV_USE_DRAW_SW_AA_SCALE_NORMAL 1 
