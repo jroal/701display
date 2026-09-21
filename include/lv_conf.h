@@ -45,16 +45,18 @@
 #define LV_USE_ARC      1 /* Ideal for circular tachometer (RPM) meters */
 
 /*====================
-   🔤 FONT MAPPING INTERFACE
+   🔤 LVGL v9 FONT MAPPING INTERFACE
  *====================*/
-/* Enable the system default Montserrat font sizes used in our C++ structure */
-#define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_MONTSERRAT_20 1 /* Engine Temp Text Size */
-#define LV_FONT_MONTSERRAT_28 1 /* Virtual Fuel Gauge Readout Size */
-#define LV_FONT_MONTSERRAT_48 1 /* Large Center Gear Position Gauge Size */
+#define LV_FONT_MONTSERRAT_14    1  /* Tiny structural fallback font */
+
+/* ACTIVATE LARGE STANDARD SIZES (REQUIRED FOR YOUR CHOSEN DESKTOP GAUGE LAYOUTS) */
+#define LV_FONT_MONTSERRAT_24    1  /* Medium high-visibility font */
+#define LV_FONT_MONTSERRAT_32    1  /* Large high-visibility font */
+#define LV_FONT_MONTSERRAT_48    1  /* Massive center gear display font */
 
 /* Set system baseline text engine mapping defaults */
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
+
 
 /*====================
    🛠️ HARDWARE PROFILE OPTIMIZATIONS

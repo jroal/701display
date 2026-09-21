@@ -1,12 +1,32 @@
 #include <Arduino.h>
 #include <driver/twai.h> // ESP32 native CAN driver
 #include <Preferences.h> // Non-volatile flash storage management
-#include <lvgl.h>        // UI Graphics Core Engine
+
+// Support both the Arduino/PlatformIO LVGL layout and package layouts that
+// place the public header in an lvgl subdirectory.
+#if __has_include(<lvgl.h>)
+    #include <lvgl.h>
+#elif __has_include(<lvgl/lvgl.h>)
+    #include <lvgl/lvgl.h>
+#else
+    #error "LVGL is not installed or its include directory is not configured"
+#endif
 
 // --- System Configuration Constants ---
 const float TOTAL_FUEL_CAPACITY = 12.8;            // 2023 US Husqvarna 701 usable Liters
 const unsigned long UDS_POLL_INTERVAL_MS = 1000;    // Query coolant temp every 1000ms
 const unsigned long NVS_WRITE_INTERVAL_MS = 30000;  // Save fuel data to flash every 30 seconds
+
+// --- Identify Environment Framework Rules ---
+#ifdef PC_SIMULATOR
+    // Windows Native Emulation Packages
+    #include <SDL2/SDL.h>
+    void hal_init(void); // Simulation display window mapping loop
+#else
+    // Physical Motorcycle Hardware Packages
+    #include <driver/twai.h> 
+    #include <Preferences.h>
+#endif
 
 // --- Thread-Safe Multi-Core Structures ---
 SemaphoreHandle_t dataMutex;
@@ -42,6 +62,10 @@ const int32_t RPM_REDLINE = 9000;       // Red zone entry threshold
 
 // --- New Graphical Pointer ---
 lv_obj_t * rpm_bar;
+
+void CANProcessingLoop(void * pvParameters);
+void UIProcessingLoop(void * pvParameters);
+void UI_Layout_Init();
 
 
 // =========================================================================
@@ -150,6 +174,9 @@ static void fuel_reset_event_cb(lv_event_t * e) {
     }
 }
 
+// Explicitly force the compiler to expose the 80px font structure array
+//LV_FONT_DECLARE(lv_font_montserrat_80);
+
 void UI_Layout_Init() {
     // ---------------------------------------------------------------------
     // 🚦 1. DESIGN THE MULTICOLOR PROGRESSIVE TACHOMETER BAR
@@ -161,6 +188,8 @@ void UI_Layout_Init() {
     mpg_label = lv_label_create(lv_screen_active());
     lv_obj_align(mpg_label, LV_ALIGN_TOP_MID, 0, 110); // Positions code below fuel_label array elements
     lv_obj_set_style_text_font(mpg_label, &lv_font_montserrat_20, 0);
+    // Instantly maximizes your gear readout text to a highly visible size
+    lv_obj_set_style_text_font(gear_label, &lv_font_montserrat_48, LV_PART_MAIN);
 
     // Style the empty background track of the bar (Dark charcoal housing)
     static lv_style_t style_bg;
@@ -182,11 +211,11 @@ void UI_Layout_Init() {
     // ---------------------------------------------------------------------
     fuel_label = lv_label_create(lv_screen_active());
     lv_obj_align(fuel_label, LV_ALIGN_TOP_MID, 0, 65);   // Pushed down slightly to make room for RPM bar
-    lv_obj_set_style_text_font(fuel_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(fuel_label, &lv_font_montserrat_48, 0);
 
     temp_label = lv_label_create(lv_screen_active());
     lv_obj_align(temp_label, LV_ALIGN_CENTER, -150, 20);
-    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_48, 0);
 
     gear_label = lv_label_create(lv_screen_active());
     lv_obj_align(gear_label, LV_ALIGN_CENTER, 150, 20);
@@ -286,10 +315,6 @@ void setup() {
     dataMutex = xSemaphoreCreateMutex();
 
     // Extract saved fuel baseline context before initiating processing cores
-    nvStorage.begin("bike-fuel", false);
-    liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
-    liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
-
     nvStorage.begin("bike-fuel", false);
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
     liveData.distanceTraveledKm = nvStorage.getFloat("distance", 0.0); // Recover distance traveled
