@@ -21,7 +21,7 @@
 #endif
 
 // --- System Configuration Constants ---
-const float TOTAL_FUEL_CAPACITY = 12.8;            // 2023 US Husqvarna 701 usable Liters
+const float TOTAL_FUEL_CAPACITY = 13;            // 2023 US Husqvarna 701 usable Liters
 const unsigned long UDS_POLL_INTERVAL_MS = 1000;    // Query coolant temp every 1000ms
 const unsigned long NVS_WRITE_INTERVAL_MS = 30000;  // Save fuel data to flash every 30 seconds
 
@@ -49,10 +49,13 @@ volatile BikeMetrics liveData;
 
 // --- LVGL Graphical Object Pointers (Core 1) ---
 lv_obj_t * fuel_label;
+lv_obj_t * fuel_bar;
+lv_obj_t * fuel_percent_label;
 lv_obj_t * temp_label;
 lv_obj_t * gear_label;
 lv_obj_t * reset_btn;
 lv_obj_t * mpg_label;
+lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
 
 // --- Tachometer Configuration Metrics ---
@@ -181,6 +184,20 @@ void UI_Layout_Init() {
     lv_style_set_text_font(&style_giant_gear, &lv_font_montserrat_48); 
     lv_style_set_text_color(&style_giant_gear, lv_color_hex(0xFFD166));
 
+    static lv_style_t style_fuel_bar;
+    lv_style_init(&style_fuel_bar);
+    lv_style_set_bg_color(&style_fuel_bar, lv_color_hex(0x17354B));
+    lv_style_set_bg_opa(&style_fuel_bar, LV_OPA_COVER);
+    lv_style_set_border_width(&style_fuel_bar, 3);
+    lv_style_set_border_color(&style_fuel_bar, lv_color_hex(0xF4F7FA));
+    lv_style_set_radius(&style_fuel_bar, 4);
+
+    static lv_style_t style_fuel_indicator;
+    lv_style_init(&style_fuel_indicator);
+    lv_style_set_bg_color(&style_fuel_indicator, lv_color_hex(0x65D6FF));
+    lv_style_set_bg_opa(&style_fuel_indicator, LV_OPA_COVER);
+    lv_style_set_radius(&style_fuel_indicator, 1);
+
     rpm_bar = lv_bar_create(screen);
     lv_obj_set_size(rpm_bar, 760, 35);                  
     lv_obj_align(rpm_bar, LV_ALIGN_TOP_MID, 0, 10);      
@@ -200,8 +217,24 @@ void UI_Layout_Init() {
     lv_obj_add_style(rpm_bar, &style_indic, LV_PART_INDICATOR);
 
     fuel_label = lv_label_create(screen);
-    lv_obj_align(fuel_label, LV_ALIGN_CENTER, -220, -100);   
+    lv_obj_align(fuel_label, LV_ALIGN_CENTER, -220, -160);
     lv_obj_add_style(fuel_label, &style_large_metric, 0);
+
+    fuel_bar = lv_bar_create(screen);
+    lv_obj_set_size(fuel_bar, 300, 38);
+    lv_obj_align(fuel_bar, LV_ALIGN_CENTER, -220, -60);
+    lv_bar_set_range(fuel_bar, 0, 100);
+    lv_obj_add_style(fuel_bar, &style_fuel_bar, LV_PART_MAIN);
+    lv_obj_add_style(fuel_bar, &style_fuel_indicator, LV_PART_INDICATOR);
+
+    fuel_percent_label = lv_label_create(fuel_bar);
+    lv_obj_add_style(fuel_percent_label, &style_sub_header, 0);
+    lv_obj_center(fuel_percent_label);
+
+    lv_obj_t *fuel_markers = lv_label_create(screen);
+    lv_label_set_text(fuel_markers, "E       1/4      1/2      3/4       F");
+    lv_obj_add_style(fuel_markers, &style_sub_header, 0);
+    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -20);
 
     temp_label = lv_label_create(screen);
     lv_obj_align(temp_label, LV_ALIGN_CENTER, 220, -100);
@@ -215,13 +248,17 @@ void UI_Layout_Init() {
     lv_obj_align(mpg_label, LV_ALIGN_CENTER, 0, 65); 
     lv_obj_add_style(mpg_label, &style_sub_header, 0);
 
+    range_label = lv_label_create(screen);
+    lv_obj_align(range_label, LV_ALIGN_CENTER, 0, 105);
+    lv_obj_add_style(range_label, &style_sub_header, 0);
+
     reset_btn = lv_button_create(screen);
-    lv_obj_set_size(reset_btn, 240, 60);
-    lv_obj_align(reset_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_size(reset_btn, 180, 44);
+    lv_obj_align(reset_btn, LV_ALIGN_CENTER, -220, -110);
     lv_obj_add_event_cb(reset_btn, fuel_reset_event_cb, LV_EVENT_ALL, NULL);
 
     lv_obj_t * label_btn = lv_label_create(reset_btn);
-    lv_label_set_text(label_btn, "RESET FUEL TANK");
+    lv_label_set_text(label_btn, "Reset");
     lv_obj_add_style(label_btn, &style_sub_header, 0);
     lv_obj_center(label_btn);
 }
@@ -242,10 +279,18 @@ void UIProcessingLoop(void * pvParameters) {
         uint16_t localRPM = liveData.engineRPM; 
         float localMPG = liveData.currentMPG;
         float localDistance = liveData.distanceTraveledKm * 0.621371; 
+        float localRange = localFuel * 0.264172 * localMPG;
+        float localFuelGallons = localFuel * 0.264172;
+        float localTempFahrenheit = (localTemp * 9.0f / 5.0f) + 32.0f;
+        int32_t localFuelPercent = (int32_t)((localFuel / TOTAL_FUEL_CAPACITY) * 100.0f + 0.5f);
+        if (localFuelPercent < 0) localFuelPercent = 0;
+        if (localFuelPercent > 100) localFuelPercent = 100;
         xSemaphoreGive(dataMutex);
 
-        lv_label_set_text_fmt(fuel_label, "FUEL: %.2f L", localFuel);
-        lv_label_set_text_fmt(temp_label, "TEMP: %d °C", localTemp);
+        lv_label_set_text_fmt(fuel_label, "FUEL: %.2f gal", localFuelGallons);
+        lv_bar_set_value(fuel_bar, localFuelPercent, LV_ANIM_OFF);
+        lv_label_set_text_fmt(fuel_percent_label, "%d%%", localFuelPercent);
+        lv_label_set_text_fmt(temp_label, "TEMP: %.0f F", localTempFahrenheit);
         
         if(localGear == 0) {
             lv_label_set_text(gear_label, "GEAR: N");
@@ -266,6 +311,11 @@ void UIProcessingLoop(void * pvParameters) {
         }
 
         lv_label_set_text_fmt(mpg_label, "ECONOMY: %.1f MPG (%.1f mi)", localMPG, localDistance);
+        if (localMPG > 0.0f) {
+            lv_label_set_text_fmt(range_label, "RANGE: %.1f mi", localRange);
+        } else {
+            lv_label_set_text(range_label, "RANGE: -- mi");
+        }
 
         if (millis() - lastNVSSave >= NVS_WRITE_INTERVAL_MS) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);

@@ -3,10 +3,21 @@
 // Global object handles so they can be read by both loops
 lv_obj_t *rpm_bar = nullptr;
 lv_obj_t *rpm_value = nullptr;
+lv_obj_t *simulator_fuel = nullptr;
+lv_obj_t *simulator_fuel_bar = nullptr;
+lv_obj_t *simulator_fuel_percent = nullptr;
 
 LV_FONT_DECLARE(lv_font_montserrat_24);
 LV_FONT_DECLARE(lv_font_montserrat_32);
 LV_FONT_DECLARE(lv_font_montserrat_48);
+
+static void simulator_fuel_reset_event_cb(lv_event_t *event) {
+    if (lv_event_get_code(event) == LV_EVENT_CLICKED) {
+        lv_label_set_text(simulator_fuel, "3.43 gal");
+        lv_bar_set_value(simulator_fuel_bar, 100, LV_ANIM_OFF);
+        lv_label_set_text(simulator_fuel_percent, "100%");
+    }
+}
 
 void create_dashboard() {
     lv_obj_t *screen = lv_screen_active();
@@ -28,24 +39,51 @@ void create_dashboard() {
     lv_style_set_text_font(&style_giant_gear, &lv_font_montserrat_48);
     lv_style_set_text_color(&style_giant_gear, lv_color_hex(0xFFD166));
 
-    // UI Elements Construction
-    lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "701 ENDURO  |  DASHBOARD");
-    lv_obj_add_style(title, &style_sub_header, 0); 
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 24);
+    static lv_style_t style_fuel_bar;
+    lv_style_init(&style_fuel_bar);
+    lv_style_set_bg_color(&style_fuel_bar, lv_color_hex(0x17354B));
+    lv_style_set_bg_opa(&style_fuel_bar, LV_OPA_COVER);
+    lv_style_set_border_width(&style_fuel_bar, 3);
+    lv_style_set_border_color(&style_fuel_bar, lv_color_hex(0xF4F7FA));
+    lv_style_set_radius(&style_fuel_bar, 4);
 
-    lv_obj_t *fuel = lv_label_create(screen);
-    lv_label_set_text(fuel, "FUEL: 12.80 L");
-    lv_obj_add_style(fuel, &style_large_metric, 0); 
-    lv_obj_align(fuel, LV_ALIGN_CENTER, -220, -100); 
+    static lv_style_t style_fuel_indicator;
+    lv_style_init(&style_fuel_indicator);
+    lv_style_set_bg_color(&style_fuel_indicator, lv_color_hex(0x65D6FF));
+    lv_style_set_bg_opa(&style_fuel_indicator, LV_OPA_COVER);
+    lv_style_set_radius(&style_fuel_indicator, 1);
+
+    // UI Elements Construction
+    simulator_fuel = lv_label_create(screen);
+    lv_label_set_text(simulator_fuel, "2.85 gal");
+    lv_obj_add_style(simulator_fuel, &style_large_metric, 0);
+    lv_obj_align(simulator_fuel, LV_ALIGN_CENTER, 240, -175);
+
+    simulator_fuel_bar = lv_bar_create(screen);
+    lv_obj_set_size(simulator_fuel_bar, 300, 38);
+    lv_obj_align(simulator_fuel_bar, LV_ALIGN_CENTER, -220, -175);
+    lv_bar_set_range(simulator_fuel_bar, 0, 100);
+    lv_bar_set_value(simulator_fuel_bar, 58, LV_ANIM_OFF);
+    lv_obj_add_style(simulator_fuel_bar, &style_fuel_bar, LV_PART_MAIN);
+    lv_obj_add_style(simulator_fuel_bar, &style_fuel_indicator, LV_PART_INDICATOR);
+
+    simulator_fuel_percent = lv_label_create(simulator_fuel_bar);
+    lv_label_set_text(simulator_fuel_percent, "58%");
+    lv_obj_add_style(simulator_fuel_percent, &style_sub_header, 0);
+    lv_obj_center(simulator_fuel_percent);
+
+    lv_obj_t *fuel_markers = lv_label_create(screen);
+    lv_label_set_text(fuel_markers, "E       1/4      1/2      3/4       F");
+    lv_obj_add_style(fuel_markers, &style_sub_header, 0);
+    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -175);
 
     lv_obj_t *temperature = lv_label_create(screen);
-    lv_label_set_text(temperature, "TEMP: 82 C");
+    lv_label_set_text(temperature, "Coolant Temperature: 180 F");
     lv_obj_add_style(temperature, &style_large_metric, 0); 
-    lv_obj_align(temperature, LV_ALIGN_CENTER, 220, -100);
+    lv_obj_align(temperature, LV_ALIGN_CENTER, 20, -100);
 
     lv_obj_t *gear = lv_label_create(screen);
-    lv_label_set_text(gear, "GEAR: N");
+    lv_label_set_text(gear, "Gear: N");
     lv_obj_add_style(gear, &style_giant_gear, 0); 
     lv_obj_align(gear, LV_ALIGN_CENTER, 0, -50);
 
@@ -61,7 +99,22 @@ void create_dashboard() {
     lv_obj_align(rpm_value, LV_ALIGN_CENTER, 0, 65);
 
     lv_obj_t *economy = lv_label_create(screen);
-    lv_label_set_text(economy, "ECONOMY: 48.2 MPG");
+    lv_label_set_text(economy, "Fuel Economy: 48.2 MPG");
     lv_obj_add_style(economy, &style_sub_header, 0); 
     lv_obj_align(economy, LV_ALIGN_CENTER, 0, 115);
+
+    lv_obj_t *range = lv_label_create(screen);
+    lv_label_set_text(range, "Range: 163.8 mi");
+    lv_obj_add_style(range, &style_sub_header, 0);
+    lv_obj_align(range, LV_ALIGN_CENTER, 0, 155);
+
+    lv_obj_t *reset_button = lv_button_create(screen);
+    lv_obj_set_size(reset_button, 180, 44);
+    lv_obj_align(reset_button, LV_ALIGN_CENTER, 30, -175);
+    lv_obj_add_event_cb(reset_button, simulator_fuel_reset_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *reset_label = lv_label_create(reset_button);
+    lv_label_set_text(reset_label, "Reset");
+    lv_obj_add_style(reset_label, &style_sub_header, 0);
+    lv_obj_center(reset_label);
 }
