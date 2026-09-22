@@ -3,4 +3,5 @@ This project uses an ESP32-S3 4.3inch Capacitive Touch LCD Development Board Typ
 <img width="801" height="482" alt="Screenshot 2026-09-22 090302" src="https://github.com/user-attachments/assets/be6b835a-d5bf-4213-9a39-70851e6e8648" />
 
 I used this hardware: https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B 
+
 I used Visual Studio Code for an IDE: https://code.visualstudio.com/ 
