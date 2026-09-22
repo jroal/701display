@@ -17,6 +17,8 @@ void create_dashboard();
 // --- 🌐 USE EXTERN TO BIND TO EXISTING TRACKS & STOP MULTIPLE DEFINITIONS ---
 extern lv_obj_t *rpm_bar;
 extern lv_obj_t *rpm_value;
+extern lv_obj_t *can_status_label;
+extern lv_obj_t *abs_mode_label;
 
 namespace {
 constexpr int DISPLAY_WIDTH = 800;

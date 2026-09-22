@@ -5,6 +5,8 @@
 // Global object handles so they can be read by both loops
 lv_obj_t *rpm_bar = nullptr;
 lv_obj_t *rpm_value = nullptr;
+lv_obj_t *can_status_label = nullptr;
+lv_obj_t *abs_mode_label = nullptr;
 lv_obj_t *simulator_fuel = nullptr;
 lv_obj_t *simulator_fuel_bar = nullptr;
 lv_obj_t *simulator_fuel_fill = nullptr;
@@ -123,6 +125,17 @@ void create_dashboard() {
     lv_label_set_text(reset_label, "Reset");
     lv_obj_add_style(reset_label, &style_sub_header, 0);
     lv_obj_center(reset_label);
+
+    can_status_label = lv_label_create(screen);
+    lv_label_set_text(can_status_label, "CAN");
+    lv_obj_add_style(can_status_label, &style_sub_header, 0);
+    lv_obj_set_style_text_color(can_status_label, lv_color_hex(0x2ECC71), 0);
+    lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
+
+    abs_mode_label = lv_label_create(screen);
+    lv_label_set_text(abs_mode_label, "ABS: ON");
+    lv_obj_add_style(abs_mode_label, &style_sub_header, 0);
+    lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
 }
 
 #endif
