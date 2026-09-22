@@ -1,0 +1,67 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Emulator",
+            "type": "shell",
+            "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
+            "args": [
+                "run",
+                "--environment",
+                "emulator_windows"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build"
+        },
+        {
+            "label": "Build Hardware",
+            "type": "shell",
+            "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
+            "args": [
+                "run",
+                "--environment",
+                "waveshare_esp32s3_43b"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build"
+        },
+        {
+            "label": "Clean Emulator",
+            "type": "shell",
+            "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
+            "args": [
+                "run",
+                "--target",
+                "clean",
+                "--environment",
+                "emulator_windows"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Clean Hardware",
+            "type": "shell",
+            "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
+            "args": [
+                "run",
+                "--target",
+                "clean",
+                "--environment",
+                "waveshare_esp32s3_43b"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc"
+        }
+    ]
+}

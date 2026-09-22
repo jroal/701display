@@ -59,6 +59,7 @@ lv_obj_t * reset_btn;
 lv_obj_t * mpg_label;
 lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
+lv_obj_t * rpm_value;
 
 #ifndef PC_SIMULATOR
 ESP_Panel hardwarePanel;
@@ -266,8 +267,8 @@ void UI_Layout_Init() {
     lv_style_set_radius(&style_fuel_indicator, 1);
 
     rpm_bar = lv_bar_create(screen);
-    lv_obj_set_size(rpm_bar, 760, 35);                  
-    lv_obj_align(rpm_bar, LV_ALIGN_TOP_MID, 0, 10);      
+    lv_obj_set_size(rpm_bar, 620, 34);                  
+    lv_obj_align(rpm_bar, LV_ALIGN_CENTER, 0, 25);      
     lv_bar_set_range(rpm_bar, 0, RPM_MAX_SCALE);
 
     static lv_style_t style_bg;
@@ -284,12 +285,12 @@ void UI_Layout_Init() {
     lv_obj_add_style(rpm_bar, &style_indic, LV_PART_INDICATOR);
 
     fuel_label = lv_label_create(screen);
-    lv_obj_align(fuel_label, LV_ALIGN_CENTER, -220, -160);
+    lv_obj_align(fuel_label, LV_ALIGN_CENTER, 240, -175);
     lv_obj_add_style(fuel_label, &style_large_metric, 0);
 
     fuel_bar = lv_bar_create(screen);
     lv_obj_set_size(fuel_bar, 300, 38);
-    lv_obj_align(fuel_bar, LV_ALIGN_CENTER, -220, -60);
+    lv_obj_align(fuel_bar, LV_ALIGN_CENTER, -220, -175);
     lv_bar_set_range(fuel_bar, 0, 100);
     lv_obj_add_style(fuel_bar, &style_fuel_bar, LV_PART_MAIN);
     lv_obj_add_style(fuel_bar, &style_fuel_indicator, LV_PART_INDICATOR);
@@ -301,27 +302,31 @@ void UI_Layout_Init() {
     lv_obj_t *fuel_markers = lv_label_create(screen);
     lv_label_set_text(fuel_markers, "E       1/4      1/2      3/4       F");
     lv_obj_add_style(fuel_markers, &style_sub_header, 0);
-    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -20);
+    lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -135);
 
     temp_label = lv_label_create(screen);
-    lv_obj_align(temp_label, LV_ALIGN_CENTER, 220, -100);
+    lv_obj_align(temp_label, LV_ALIGN_CENTER, 20, -100);
     lv_obj_add_style(temp_label, &style_large_metric, 0);
 
     gear_label = lv_label_create(screen);
     lv_obj_align(gear_label, LV_ALIGN_CENTER, 0, -50);
     lv_obj_add_style(gear_label, &style_giant_gear, 0);
 
+    rpm_value = lv_label_create(screen);
+    lv_obj_align(rpm_value, LV_ALIGN_CENTER, 0, 65);
+    lv_obj_add_style(rpm_value, &style_sub_header, 0);
+
     mpg_label = lv_label_create(screen);
-    lv_obj_align(mpg_label, LV_ALIGN_CENTER, 0, 65); 
+    lv_obj_align(mpg_label, LV_ALIGN_CENTER, 0, 115); 
     lv_obj_add_style(mpg_label, &style_sub_header, 0);
 
     range_label = lv_label_create(screen);
-    lv_obj_align(range_label, LV_ALIGN_CENTER, 0, 105);
+    lv_obj_align(range_label, LV_ALIGN_CENTER, 0, 155);
     lv_obj_add_style(range_label, &style_sub_header, 0);
 
     reset_btn = lv_button_create(screen);
     lv_obj_set_size(reset_btn, 180, 44);
-    lv_obj_align(reset_btn, LV_ALIGN_CENTER, -220, -110);
+    lv_obj_align(reset_btn, LV_ALIGN_CENTER, 30, -175);
     lv_obj_add_event_cb(reset_btn, fuel_reset_event_cb, LV_EVENT_ALL, NULL);
 
     lv_obj_t * label_btn = lv_label_create(reset_btn);
@@ -369,6 +374,7 @@ void UIProcessingLoop(void * pvParameters) {
         }
 
         lv_bar_set_value(rpm_bar, localRPM, LV_ANIM_OFF);
+        lv_label_set_text_fmt(rpm_value, "%u RPM", localRPM);
 
         if (localRPM < RPM_PEAK_POWER) {
             lv_obj_set_style_bg_color(rpm_bar, lv_color_make(0, 220, 0), LV_PART_INDICATOR); 
