@@ -11,6 +11,7 @@
     #include <Preferences.h> // Non-volatile flash storage management
     #include <ESP_Panel_Library.h>
     #include <esp_log.h>
+    #include <esp_heap_caps.h>
 #endif
 
 // Support both standard project directory formats cleanly
@@ -24,7 +25,7 @@
 
 // --- System Configuration Constants ---
 const float TOTAL_FUEL_CAPACITY = 13;            // 2023 US Husqvarna 701 usable Liters
-const unsigned long UDS_POLL_INTERVAL_MS = 1000;    // Query coolant temp every 1000ms
+const unsigned long UDS_POLL_INTERVAL_MS = 500;
 const uint16_t ENGINE_RUN_RPM_THRESHOLD = 500;      // RPM above which the engine is considered running
 
 // --- Thread-Safe Multi-Core Structures ---
@@ -65,8 +66,8 @@ lv_obj_t * rpm_value;
 ESP_Panel hardwarePanel;
 ESP_PanelLcd *hardwareLcd = nullptr;
 lv_display_t *hardwareDisplay = nullptr;
-alignas(64) static lv_color_t lvglBuffer1[800 * 40];
-alignas(64) static lv_color_t lvglBuffer2[800 * 40];
+static uint8_t *lvglFrameBuffer = nullptr;
+static uint8_t *lvglFrameBuffer2 = nullptr;
 static uint8_t flushLogCount = 0;
 
 static void hardware_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t *pixelMap) {
@@ -86,6 +87,8 @@ static void hardware_flush_cb(lv_display_t *display, const lv_area_t *area, uint
 }
 
 static bool hardware_display_init() {
+    constexpr size_t BUFFER_LINES = 40;
+
     Serial.println("DISPLAY: panel init");
     hardwarePanel.init();
     Serial.println("DISPLAY: panel begin");
@@ -108,11 +111,19 @@ static bool hardware_display_init() {
     Serial.println("DISPLAY: display created");
     Serial.flush();
     lv_display_set_color_format(hardwareDisplay, LV_COLOR_FORMAT_RGB565);
+    lvglFrameBuffer = static_cast<uint8_t *>(
+        heap_caps_malloc(800 * BUFFER_LINES * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    lvglFrameBuffer2 = static_cast<uint8_t *>(
+        heap_caps_malloc(800 * BUFFER_LINES * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    if (lvglFrameBuffer == nullptr || lvglFrameBuffer2 == nullptr) {
+        Serial.println("DISPLAY: partial-frame buffer allocation failed");
+        return false;
+    }
     lv_display_set_buffers(
         hardwareDisplay,
-        lvglBuffer1,
-        lvglBuffer2,
-        sizeof(lvglBuffer1),
+        lvglFrameBuffer,
+        lvglFrameBuffer2,
+        800 * BUFFER_LINES * 2,
         LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(hardwareDisplay, hardware_flush_cb);
     lv_display_set_default(hardwareDisplay);
@@ -161,19 +172,17 @@ void sendUDSPIDRequest(uint8_t pid) {
 void CANProcessingLoop(void * pvParameters) {
     unsigned long lastUDSPoll = 0;
     unsigned long lastTimeCheck = millis();
-    bool pollToggle = false; 
+    unsigned long lastFuelRateCheck = 0;
+    uint8_t pollIndex = 0;
 
     while(true) {
         unsigned long currentMillis = millis();
         twai_message_t rx_msg;
 
-        if (currentMillis - lastUDSPoll >= 500) {
-            if (pollToggle) {
-                sendUDSPIDRequest(0x05); 
-            } else {
-                sendUDSPIDRequest(0x0D); 
-            }
-            pollToggle = !pollToggle;
+        if (currentMillis - lastUDSPoll >= UDS_POLL_INTERVAL_MS) {
+            const uint8_t polledPids[] = {0x05, 0x0D, 0x5E};
+            sendUDSPIDRequest(polledPids[pollIndex]);
+            pollIndex = (pollIndex + 1) % 3;
             lastUDSPoll = currentMillis;
         }
 
@@ -193,12 +202,32 @@ void CANProcessingLoop(void * pvParameters) {
 
                     if (currentSpeedKmh > 0) {
                         liveData.distanceTraveledKm += (float)currentSpeedKmh * deltaTimeHours;
-                        
-                        if (liveData.fuelConsumed > 0.001) {
-                            float miles = liveData.distanceTraveledKm * 0.621371;
-                            float gallons = liveData.fuelConsumed * 0.264172;
-                            liveData.currentMPG = miles / gallons;
+                    }
+
+                    if (liveData.fuelConsumed > 0.001) {
+                        float miles = liveData.distanceTraveledKm * 0.621371;
+                        float gallons = liveData.fuelConsumed * 0.264172;
+                        liveData.currentMPG = miles / gallons;
+                    }
+                }
+                else if (rx_msg.data[2] == 0x5E) {
+                    unsigned long currentTime = millis();
+                    if (lastFuelRateCheck != 0) {
+                        float deltaFuelHours = (currentTime - lastFuelRateCheck) / 3600000.0;
+                        float fuelRateLitersPerHour =
+                            ((rx_msg.data[3] * 256.0f) + rx_msg.data[4]) / 20.0f;
+                        liveData.fuelConsumed += fuelRateLitersPerHour * deltaFuelHours;
+                        liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
+                        if (liveData.fuelRemaining < 0.0f) {
+                            liveData.fuelRemaining = 0.0f;
                         }
+                    }
+                    lastFuelRateCheck = currentTime;
+
+                    if (liveData.fuelConsumed > 0.001) {
+                        float miles = liveData.distanceTraveledKm * 0.621371;
+                        float gallons = liveData.fuelConsumed * 0.264172;
+                        liveData.currentMPG = miles / gallons;
                     }
                 }
             }
@@ -340,12 +369,19 @@ void UIProcessingLoop(void * pvParameters) {
     Serial.println("UI: task entered");
     unsigned long lastLvglTick = millis();
     bool engineHasRun = false; // Tracks whether RPM has crossed the running threshold since the last stop
+    float previousFuelGallons = -1.0f;
+    int32_t previousFuelPercent = -1;
+    float previousTempFahrenheit = -1000.0f;
+    uint8_t previousGear = 255;
+    uint16_t previousRPM = UINT16_MAX;
+    float previousMPG = -1.0f;
+    float previousDistance = -1.0f;
+    float previousRange = -1.0f;
 
     while(true) {
         unsigned long currentMillis = millis();
         lv_tick_inc(currentMillis - lastLvglTick);
         lastLvglTick = currentMillis;
-        lv_timer_handler(); 
 
         xSemaphoreTake(dataMutex, portMAX_DELAY);
         float localFuel = liveData.fuelRemaining;
@@ -362,35 +398,60 @@ void UIProcessingLoop(void * pvParameters) {
         if (localFuelPercent > 100) localFuelPercent = 100;
         xSemaphoreGive(dataMutex);
 
-        lv_label_set_text_fmt(fuel_label, "FUEL: %.2f gal", localFuelGallons);
-        lv_bar_set_value(fuel_bar, localFuelPercent, LV_ANIM_OFF);
-        lv_label_set_text_fmt(fuel_percent_label, "%d%%", localFuelPercent);
-        lv_label_set_text_fmt(temp_label, "TEMP: %.0f F", localTempFahrenheit);
+        if (localFuelGallons != previousFuelGallons) {
+            lv_label_set_text_fmt(fuel_label, "FUEL: %.2f gal", localFuelGallons);
+            previousFuelGallons = localFuelGallons;
+        }
+        if (localFuelPercent != previousFuelPercent) {
+            lv_bar_set_value(fuel_bar, localFuelPercent, LV_ANIM_OFF);
+            lv_label_set_text_fmt(fuel_percent_label, "%d%%", localFuelPercent);
+            previousFuelPercent = localFuelPercent;
+        }
+        if (localTempFahrenheit != previousTempFahrenheit) {
+            lv_label_set_text_fmt(temp_label, "TEMP: %.0f F", localTempFahrenheit);
+            previousTempFahrenheit = localTempFahrenheit;
+        }
         
-        if(localGear == 0) {
-            lv_label_set_text(gear_label, "GEAR: N");
-        } else {
-            lv_label_set_text_fmt(gear_label, "GEAR: %d", localGear);
+        if (localGear != previousGear) {
+            if(localGear == 0) {
+                lv_label_set_text(gear_label, "GEAR: N");
+            } else {
+                lv_label_set_text_fmt(gear_label, "GEAR: %d", localGear);
+            }
+            previousGear = localGear;
         }
 
-        lv_bar_set_value(rpm_bar, localRPM, LV_ANIM_OFF);
-        lv_label_set_text_fmt(rpm_value, "%u RPM", localRPM);
-
-        if (localRPM < RPM_PEAK_POWER) {
-            lv_obj_set_style_bg_color(rpm_bar, lv_color_make(0, 220, 0), LV_PART_INDICATOR); 
-        } 
-        else if (localRPM < RPM_REDLINE) {
-            lv_obj_set_style_bg_color(rpm_bar, lv_color_make(240, 240, 0), LV_PART_INDICATOR); 
-        } 
-        else {
-            lv_obj_set_style_bg_color(rpm_bar, lv_color_make(255, 0, 0), LV_PART_INDICATOR); 
+        bool rpmChanged = localRPM != previousRPM;
+        if (rpmChanged) {
+            lv_bar_set_value(rpm_bar, localRPM, LV_ANIM_OFF);
+            lv_label_set_text_fmt(rpm_value, "%u RPM", localRPM);
+            previousRPM = localRPM;
         }
 
-        lv_label_set_text_fmt(mpg_label, "ECONOMY: %.1f MPG (%.1f mi)", localMPG, localDistance);
-        if (localMPG > 0.0f) {
-            lv_label_set_text_fmt(range_label, "RANGE: %.1f mi", localRange);
-        } else {
-            lv_label_set_text(range_label, "RANGE: -- mi");
+        if (rpmChanged) {
+            if (localRPM < RPM_PEAK_POWER) {
+                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(0, 220, 0), LV_PART_INDICATOR);
+            }
+            else if (localRPM < RPM_REDLINE) {
+                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(240, 240, 0), LV_PART_INDICATOR);
+            }
+            else {
+                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(255, 0, 0), LV_PART_INDICATOR);
+            }
+        }
+
+        if (localMPG != previousMPG || localDistance != previousDistance) {
+            lv_label_set_text_fmt(mpg_label, "ECONOMY: %.1f MPG (%.1f mi)", localMPG, localDistance);
+            previousMPG = localMPG;
+            previousDistance = localDistance;
+        }
+        if (localRange != previousRange || localMPG != previousMPG) {
+            if (localMPG > 0.0f) {
+                lv_label_set_text_fmt(range_label, "RANGE: %.1f mi", localRange);
+            } else {
+                lv_label_set_text(range_label, "RANGE: -- mi");
+            }
+            previousRange = localRange;
         }
 
         if (localRPM > ENGINE_RUN_RPM_THRESHOLD) {
@@ -409,6 +470,8 @@ void UIProcessingLoop(void * pvParameters) {
             nvStorage.putFloat("distance", currentDistance); 
             nvStorage.end();
         }
+
+        lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(16)); 
     }
 }
@@ -440,13 +503,15 @@ void setup() {
     UI_Layout_Init();
     lv_display_enable_invalidation(hardwareDisplay, true);
     lv_obj_invalidate(lv_screen_active());
-    lv_display_refr_timer(lv_display_get_refr_timer(hardwareDisplay));
     Serial.println("BOOT: UI ready");
 
     nvStorage.begin("bike-fuel", false);
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
     liveData.distanceTraveledKm = nvStorage.getFloat("distance", 0.0); 
     liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
+    if (liveData.fuelRemaining < 0.0f) {
+        liveData.fuelRemaining = 0.0f;
+    }
     nvStorage.end();
 
     BaseType_t uiTaskResult = xTaskCreatePinnedToCore(UIProcessingLoop, "UI_Core1", 8192, NULL, 1, &UITaskHandle, 1);
