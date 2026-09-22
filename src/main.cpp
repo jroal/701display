@@ -25,7 +25,7 @@
 // --- System Configuration Constants ---
 const float TOTAL_FUEL_CAPACITY = 13;            // 2023 US Husqvarna 701 usable Liters
 const unsigned long UDS_POLL_INTERVAL_MS = 1000;    // Query coolant temp every 1000ms
-const unsigned long NVS_WRITE_INTERVAL_MS = 30000;  // Save fuel data to flash every 30 seconds
+const uint16_t ENGINE_RUN_RPM_THRESHOLD = 500;      // RPM above which the engine is considered running
 
 // --- Thread-Safe Multi-Core Structures ---
 SemaphoreHandle_t dataMutex;
@@ -338,8 +338,8 @@ void UI_Layout_Init() {
 #ifndef PC_SIMULATOR
 void UIProcessingLoop(void * pvParameters) {
     Serial.println("UI: task entered");
-    unsigned long lastNVSSave = millis();
-    unsigned long lastLvglTick = lastNVSSave;
+    unsigned long lastLvglTick = millis();
+    bool engineHasRun = false; // Tracks whether RPM has crossed the running threshold since the last stop
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -393,7 +393,12 @@ void UIProcessingLoop(void * pvParameters) {
             lv_label_set_text(range_label, "RANGE: -- mi");
         }
 
-        if (millis() - lastNVSSave >= NVS_WRITE_INTERVAL_MS) {
+        if (localRPM > ENGINE_RUN_RPM_THRESHOLD) {
+            engineHasRun = true;
+        } else if (engineHasRun) {
+            // Engine just transitioned from running to stopped; persist fuel usage once
+            engineHasRun = false;
+
             xSemaphoreTake(dataMutex, portMAX_DELAY);
             float currentConsumed = liveData.fuelConsumed;
             float currentDistance = liveData.distanceTraveledKm;
@@ -403,7 +408,6 @@ void UIProcessingLoop(void * pvParameters) {
             nvStorage.putFloat("consumed", currentConsumed);
             nvStorage.putFloat("distance", currentDistance); 
             nvStorage.end();
-            lastNVSSave = millis();
         }
         vTaskDelay(pdMS_TO_TICKS(16)); 
     }
