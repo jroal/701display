@@ -41,6 +41,7 @@ struct BikeMetrics {
     uint8_t currentGear = 0;
     bool fuelResetTriggered = false;
     bool canActive = false;
+    uint8_t absModeStatus = 0;
 };
 volatile BikeMetrics liveData;
 
@@ -64,6 +65,7 @@ lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
 lv_obj_t * rpm_value;
 lv_obj_t * can_status_label;
+lv_obj_t * abs_mode_label;
 
 #ifndef PC_SIMULATOR
 ESP_Panel hardwarePanel;
@@ -209,7 +211,19 @@ void CANProcessingLoop(void * pvParameters) {
         if (twai_receive(&rx_msg, pdMS_TO_TICKS(5)) == ESP_OK) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
 
-            if (rx_msg.identifier == 0x7E8 && rx_msg.data[1] == 0x41) {
+            if (rx_msg.identifier == 0x130 || rx_msg.identifier == 0x136) {
+                uint8_t absByte = rx_msg.data[1];
+                if ((absByte & 0x0C) == 0x0C) {
+                    liveData.absModeStatus = 2;
+                }
+                else if ((absByte & 0x04) == 0x04) {
+                    liveData.absModeStatus = 1;
+                }
+                else {
+                    liveData.absModeStatus = 0;
+                }
+            }
+            else if (rx_msg.identifier == 0x7E8 && rx_msg.data[1] == 0x41) {
                 canWasActiveThisBoot = true;
                 lastValidCanResponse = millis();
                 fuelLossWriteComplete = false;
@@ -406,6 +420,11 @@ void UI_Layout_Init() {
     lv_obj_add_style(can_status_label, &style_sub_header, 0);
     lv_obj_set_style_text_color(can_status_label, lv_color_hex(0xF1C40F), 0);
     lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
+
+    abs_mode_label = lv_label_create(screen);
+    lv_label_set_text(abs_mode_label, "ABS: ON");
+    lv_obj_add_style(abs_mode_label, &style_sub_header, 0);
+    lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
 }
 
 #ifndef PC_SIMULATOR
@@ -422,6 +441,7 @@ void UIProcessingLoop(void * pvParameters) {
     float previousDistance = -1.0f;
     float previousRange = -1.0f;
     bool previousCanActive = false;
+    uint8_t previousAbsModeStatus = 255;
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -434,6 +454,7 @@ void UIProcessingLoop(void * pvParameters) {
         uint8_t localGear = liveData.currentGear;
         uint16_t localRPM = liveData.engineRPM; 
         bool localCanActive = liveData.canActive;
+        uint8_t localAbsModeStatus = liveData.absModeStatus;
         float localMPG = liveData.currentMPG;
         float localDistance = liveData.distanceTraveledKm * 0.621371; 
         float localRange = localFuel * 0.264172 * localMPG;
@@ -506,6 +527,19 @@ void UIProcessingLoop(void * pvParameters) {
                 localCanActive ? lv_color_hex(0x2ECC71) : lv_color_hex(0xF1C40F),
                 0);
             previousCanActive = localCanActive;
+        }
+
+        if (localAbsModeStatus != previousAbsModeStatus) {
+            if (localAbsModeStatus == 2) {
+                lv_label_set_text(abs_mode_label, "ABS: OFF");
+            }
+            else if (localAbsModeStatus == 1) {
+                lv_label_set_text(abs_mode_label, "ABS: OFF-Road");
+            }
+            else {
+                lv_label_set_text(abs_mode_label, "ABS: ON");
+            }
+            previousAbsModeStatus = localAbsModeStatus;
         }
 
         if (localRPM > ENGINE_RUN_RPM_THRESHOLD) {
