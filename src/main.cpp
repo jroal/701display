@@ -40,6 +40,7 @@ struct BikeMetrics {
     int16_t coolantTemp = 0;
     uint8_t currentGear = 0;
     bool fuelResetTriggered = false;
+    bool canActive = false;
 };
 volatile BikeMetrics liveData;
 
@@ -48,6 +49,7 @@ volatile BikeMetrics liveData;
     TaskHandle_t CANTaskHandle = NULL;
     TaskHandle_t UITaskHandle = NULL;
     Preferences nvStorage;
+    float fuelConsumedAtStartup = 0.0f;
 #endif
 
 // --- LVGL Graphical Object Pointers (Core 1) ---
@@ -61,6 +63,7 @@ lv_obj_t * mpg_label;
 lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
 lv_obj_t * rpm_value;
+lv_obj_t * can_status_label;
 
 #ifndef PC_SIMULATOR
 ESP_Panel hardwarePanel;
@@ -169,11 +172,28 @@ void sendUDSPIDRequest(uint8_t pid) {
     twai_transmit(&tx_msg, pdMS_TO_TICKS(10));
 }
 
+static void persistFuelDataIfChanged(float consumed, float distance) {
+    nvStorage.begin("bike-fuel", false);
+    float storedConsumed = nvStorage.getFloat("consumed", 0.0f);
+    float storedDistance = nvStorage.getFloat("distance", 0.0f);
+
+    if (storedConsumed != consumed) {
+        nvStorage.putFloat("consumed", consumed);
+    }
+    if (storedDistance != distance) {
+        nvStorage.putFloat("distance", distance);
+    }
+    nvStorage.end();
+}
+
 void CANProcessingLoop(void * pvParameters) {
     unsigned long lastUDSPoll = 0;
     unsigned long lastTimeCheck = millis();
     unsigned long lastFuelRateCheck = 0;
+    unsigned long lastValidCanResponse = 0;
     uint8_t pollIndex = 0;
+    bool canWasActiveThisBoot = false;
+    bool fuelLossWriteComplete = false;
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -190,6 +210,11 @@ void CANProcessingLoop(void * pvParameters) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
 
             if (rx_msg.identifier == 0x7E8 && rx_msg.data[1] == 0x41) {
+                canWasActiveThisBoot = true;
+                lastValidCanResponse = millis();
+                fuelLossWriteComplete = false;
+                liveData.canActive = true;
+
                 if (rx_msg.data[2] == 0x05) {
                     liveData.coolantTemp = (int16_t)rx_msg.data[3] - 40;
                 }
@@ -234,6 +259,22 @@ void CANProcessingLoop(void * pvParameters) {
             xSemaphoreGive(dataMutex);
         }
 
+        if (canWasActiveThisBoot && !fuelLossWriteComplete &&
+            millis() - lastValidCanResponse >= 2500) {
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+            float currentConsumed = liveData.fuelConsumed;
+            float currentDistance = liveData.distanceTraveledKm;
+            xSemaphoreGive(dataMutex);
+
+            if (currentConsumed > fuelConsumedAtStartup + 0.001f) {
+                persistFuelDataIfChanged(currentConsumed, currentDistance);
+            }
+            fuelLossWriteComplete = true;
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+            liveData.canActive = false;
+            xSemaphoreGive(dataMutex);
+        }
+
         if (liveData.fuelResetTriggered) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
             liveData.fuelConsumed = 0.0;
@@ -242,10 +283,7 @@ void CANProcessingLoop(void * pvParameters) {
             liveData.currentMPG = 0.0;
             liveData.fuelResetTriggered = false;
 
-            nvStorage.begin("bike-fuel", false);
-            nvStorage.putFloat("consumed", 0.0);
-            nvStorage.putFloat("distance", 0.0); 
-            nvStorage.end();
+            persistFuelDataIfChanged(0.0f, 0.0f);
             xSemaphoreGive(dataMutex);
         }
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -362,6 +400,12 @@ void UI_Layout_Init() {
     lv_label_set_text(label_btn, "Reset");
     lv_obj_add_style(label_btn, &style_sub_header, 0);
     lv_obj_center(label_btn);
+
+    can_status_label = lv_label_create(screen);
+    lv_label_set_text(can_status_label, "CAN");
+    lv_obj_add_style(can_status_label, &style_sub_header, 0);
+    lv_obj_set_style_text_color(can_status_label, lv_color_hex(0xF1C40F), 0);
+    lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
 }
 
 #ifndef PC_SIMULATOR
@@ -377,6 +421,7 @@ void UIProcessingLoop(void * pvParameters) {
     float previousMPG = -1.0f;
     float previousDistance = -1.0f;
     float previousRange = -1.0f;
+    bool previousCanActive = false;
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -388,6 +433,7 @@ void UIProcessingLoop(void * pvParameters) {
         int16_t localTemp = liveData.coolantTemp;
         uint8_t localGear = liveData.currentGear;
         uint16_t localRPM = liveData.engineRPM; 
+        bool localCanActive = liveData.canActive;
         float localMPG = liveData.currentMPG;
         float localDistance = liveData.distanceTraveledKm * 0.621371; 
         float localRange = localFuel * 0.264172 * localMPG;
@@ -454,6 +500,14 @@ void UIProcessingLoop(void * pvParameters) {
             previousRange = localRange;
         }
 
+        if (localCanActive != previousCanActive) {
+            lv_obj_set_style_text_color(
+                can_status_label,
+                localCanActive ? lv_color_hex(0x2ECC71) : lv_color_hex(0xF1C40F),
+                0);
+            previousCanActive = localCanActive;
+        }
+
         if (localRPM > ENGINE_RUN_RPM_THRESHOLD) {
             engineHasRun = true;
         } else if (engineHasRun) {
@@ -465,10 +519,9 @@ void UIProcessingLoop(void * pvParameters) {
             float currentDistance = liveData.distanceTraveledKm;
             xSemaphoreGive(dataMutex);
 
-            nvStorage.begin("bike-fuel", false);
-            nvStorage.putFloat("consumed", currentConsumed);
-            nvStorage.putFloat("distance", currentDistance); 
-            nvStorage.end();
+            if (currentConsumed > fuelConsumedAtStartup + 0.001f) {
+                persistFuelDataIfChanged(currentConsumed, currentDistance);
+            }
         }
 
         lv_timer_handler();
@@ -507,6 +560,7 @@ void setup() {
 
     nvStorage.begin("bike-fuel", false);
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
+    fuelConsumedAtStartup = liveData.fuelConsumed;
     liveData.distanceTraveledKm = nvStorage.getFloat("distance", 0.0); 
     liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
     if (liveData.fuelRemaining < 0.0f) {
