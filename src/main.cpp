@@ -8,6 +8,7 @@
 #else
     // Native Physical Micro-Controller Hardware Drivers
     #include <driver/twai.h> // ESP32 native CAN driver
+    #include <driver/i2c.h>
     #include <Preferences.h> // Non-volatile flash storage management
     #include <ESP_Panel_Library.h>
     #include <esp_log.h>
@@ -32,7 +33,7 @@ const uint16_t ENGINE_RUN_RPM_THRESHOLD = 500;      // RPM above which the engin
 SemaphoreHandle_t dataMutex;
 
 struct BikeMetrics {
-    float fuelRemaining = TOTAL_FUEL_CAPACITY;
+    float fuelRemaining = 5;
     float fuelConsumed = 0.0;
     float distanceTraveledKm = 0.0; // Cumulative distance track since last fill-up
     float currentMPG = 0.0;         // Calculated average fuel efficiency
@@ -70,10 +71,80 @@ lv_obj_t * abs_mode_label;
 #ifndef PC_SIMULATOR
 ESP_Panel hardwarePanel;
 ESP_PanelLcd *hardwareLcd = nullptr;
+ESP_PanelLcdTouch *hardwareTouch = nullptr;
+lv_indev_t *hardwareTouchIndev = nullptr;
 lv_display_t *hardwareDisplay = nullptr;
 static uint8_t *lvglFrameBuffer = nullptr;
 static uint8_t *lvglFrameBuffer2 = nullptr;
 static uint8_t flushLogCount = 0;
+
+// Waveshare board's CH422G I/O expander controls TP_RST/LCD_RST/backlight over I2C.
+static const uint8_t CH422G_IO_WRITE_ADDRESS = 0x38;
+TaskHandle_t TouchTaskHandle = NULL;
+
+// Touch is polled from its own task on core 0, away from the RGB LCD flush on core 1 -
+// the ESP32-S3's RGB panel DMA is sensitive to bus contention from I2C activity on the same core.
+SemaphoreHandle_t touchMutex;
+volatile bool touchPressedShared = false;
+volatile uint16_t touchXShared = 0;
+volatile uint16_t touchYShared = 0;
+
+static void hardware_touch_read_cb(lv_indev_t *, lv_indev_data_t *data) {
+    xSemaphoreTake(touchMutex, portMAX_DELAY);
+    bool pressed = touchPressedShared;
+    uint16_t x = touchXShared;
+    uint16_t y = touchYShared;
+    xSemaphoreGive(touchMutex);
+
+    if (pressed) {
+        data->point.x = x;
+        data->point.y = y;
+        data->state = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+    }
+}
+
+void TouchProcessingLoop(void *) {
+    while (true) {
+        if (hardwareTouch != nullptr) {
+            hardwareTouch->readData();
+            bool pressed = hardwareTouch->getTouchState();
+            TouchPoint point = pressed ? hardwareTouch->getPoint() : TouchPoint();
+
+            xSemaphoreTake(touchMutex, portMAX_DELAY);
+            touchPressedShared = pressed;
+            touchXShared = point.x;
+            touchYShared = point.y;
+            xSemaphoreGive(touchMutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
+// Brings up the CH422G expander's I2C bus and releases TP_RST/LCD_RST (driven high here)
+// before the touch/LCD peripherals are touched - GT911 stays unresponsive if this runs late.
+static bool expander_init() {
+    i2c_config_t conf = {};
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = ESP_PANEL_LCD_TOUCH_I2C_IO_SDA;
+    conf.scl_io_num = ESP_PANEL_LCD_TOUCH_I2C_IO_SCL;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.master.clk_speed = 400000;
+    if (i2c_param_config(I2C_NUM_0, &conf) != ESP_OK || i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0) != ESP_OK) {
+        Serial.println("EXPANDER: I2C bus initialization failed");
+        return false;
+    }
+
+    uint8_t outputLevels = 0xFF;
+    if (i2c_master_write_to_device(I2C_NUM_0, CH422G_IO_WRITE_ADDRESS, &outputLevels,
+                                   sizeof(outputLevels), pdMS_TO_TICKS(10)) != ESP_OK) {
+        Serial.println("EXPANDER: output level write failed");
+        return false;
+    }
+    return true;
+}
 
 static void hardware_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t *pixelMap) {
     if (flushLogCount < 3) {
@@ -132,6 +203,15 @@ static bool hardware_display_init() {
         LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(hardwareDisplay, hardware_flush_cb);
     lv_display_set_default(hardwareDisplay);
+
+    hardwareTouch = hardwarePanel.getLcdTouch();
+    if (hardwareTouch == nullptr) {
+        Serial.println("DISPLAY: touch initialization failed, screen will be view-only");
+    } else {
+        hardwareTouchIndev = lv_indev_create();
+        lv_indev_set_type(hardwareTouchIndev, LV_INDEV_TYPE_POINTER);
+        lv_indev_set_read_cb(hardwareTouchIndev, hardware_touch_read_cb);
+    }
     Serial.printf("DISPLAY: state cf=%d mode=%d buf=%u timer=%p\n",
                   static_cast<int>(lv_display_get_color_format(hardwareDisplay)),
                   static_cast<int>(lv_display_get_render_mode(hardwareDisplay)),
@@ -580,6 +660,11 @@ void setup() {
     Serial.println("CONFIG: LCD disabled");
 #endif
     dataMutex = xSemaphoreCreateMutex();
+    touchMutex = xSemaphoreCreateMutex();
+
+    if (!expander_init()) {
+        Serial.println("EXPANDER: initialization failed, touch/backlight may misbehave");
+    }
 
     if (!hardware_display_init()) {
         while (true) {
@@ -605,6 +690,8 @@ void setup() {
     BaseType_t uiTaskResult = xTaskCreatePinnedToCore(UIProcessingLoop, "UI_Core1", 8192, NULL, 1, &UITaskHandle, 1);
     Serial.printf("BOOT: UI task result %d\n", static_cast<int>(uiTaskResult));
     Serial.println("BOOT: UI task started");
+
+    xTaskCreatePinnedToCore(TouchProcessingLoop, "TouchTask", 3072, NULL, 1, &TouchTaskHandle, 0);
 }
 
 void loop() {
