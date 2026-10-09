@@ -1,0 +1,10 @@
+[2026-10-09 14:26:51 UTC] SD error log started
+[2026-10-09 14:26:50 UTC] BOOT: setup
+[2026-10-09 14:26:50 UTC] CONFIG: custom board enabled
+[2026-10-09 14:26:50 UTC] CONFIG: LCD enabled
+[2026-10-09 14:26:51 UTC] RTC: system clock synchronized from PCF85063A
+[2026-10-09 14:26:51 UTC] BOOT: UI ready
+[2026-10-09 14:26:51 UTC] UI: task entered
+[2026-10-09 14:26:51 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-10-09 14:26:51 UTC] CAN: side stand DOWN (0x540 byte4=0x10)
+[2026-10-09 14:26:51 UTC] /CAN10092026_1426.csv

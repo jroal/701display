@@ -1,0 +1,24 @@
+[2026-10-09 11:08:02 UTC] SD error log started
+[2026-10-09 11:08:01 UTC] BOOT: setup
+[2026-10-09 11:08:01 UTC] CONFIG: custom board enabled
+[2026-10-09 11:08:01 UTC] CONFIG: LCD enabled
+[2026-10-09 11:08:02 UTC] RTC: system clock synchronized from PCF85063A
+[2026-10-09 11:08:02 UTC] BOOT: UI ready
+[2026-10-09 11:08:02 UTC] UI: task entered
+[2026-10-09 11:08:02 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-10-09 11:08:02 UTC] CAN: side stand UP (0x540 byte4=0x11)
+[2026-10-09 11:08:02 UTC] /CAN10092026_1108.csv
+[2026-10-09 11:08:10 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.000 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:08:20 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.021 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:08:30 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.053 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:08:40 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.124 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:08:50 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.173 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:00 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.231 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:10 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.302 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:20 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.376 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:30 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.434 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:40 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.486 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:09:50 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.535 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:10:00 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.595 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:10:10 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.658 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:10:20 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.709 km rate_raw=0 (0.00 L/h) replies=0

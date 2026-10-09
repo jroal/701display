@@ -1,0 +1,37 @@
+[2026-10-09 11:16:13 UTC] SD error log started
+[2026-10-09 11:16:12 UTC] BOOT: setup
+[2026-10-09 11:16:12 UTC] CONFIG: custom board enabled
+[2026-10-09 11:16:12 UTC] CONFIG: LCD enabled
+[2026-10-09 11:16:13 UTC] RTC: system clock synchronized from PCF85063A
+[2026-10-09 11:16:13 UTC] BOOT: UI ready
+[2026-10-09 11:16:13 UTC] UI: task entered
+[2026-10-09 11:16:13 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-10-09 11:16:13 UTC] CAN: side stand UP (0x540 byte4=0x11)
+[2026-10-09 11:16:13 UTC] /CAN10092026_1116.csv
+[2026-10-09 11:16:21 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.002 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:16:26 UTC] SCAN: sweep started
+[2026-10-09 11:16:31 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.051 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:16:35 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:16:41 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.106 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:16:51 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.158 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:01 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.212 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:05 UTC] SCAN: sweep started
+[2026-10-09 11:17:11 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.268 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:14 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:17:21 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.324 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:31 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.380 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:41 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.435 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:44 UTC] SCAN: sweep started
+[2026-10-09 11:17:51 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.491 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:17:52 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:18:01 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.545 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:18:11 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.599 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:18:21 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.652 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:18:22 UTC] SCAN: sweep started
+[2026-10-09 11:18:31 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:18:31 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.669 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:18:40 UTC] CAN: side stand DOWN (0x540 byte4=0x00)
+[2026-10-09 11:18:41 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.669 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:18:51 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.669 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:19:01 UTC] SCAN: sweep started
+[2026-10-09 11:19:01 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.669 km rate_raw=0 (0.00 L/h) replies=0

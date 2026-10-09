@@ -1,0 +1,77 @@
+[2026-10-09 11:26:18 UTC] SD error log started
+[2026-10-09 11:26:17 UTC] BOOT: setup
+[2026-10-09 11:26:17 UTC] CONFIG: custom board enabled
+[2026-10-09 11:26:17 UTC] CONFIG: LCD enabled
+[2026-10-09 11:26:18 UTC] RTC: system clock synchronized from PCF85063A
+[2026-10-09 11:26:18 UTC] BOOT: UI ready
+[2026-10-09 11:26:18 UTC] UI: task entered
+[2026-10-09 11:26:18 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-10-09 11:26:18 UTC] CAN: side stand UP (0x540 byte4=0x11)
+[2026-10-09 11:26:18 UTC] /CAN10092026_1126.csv
+[2026-10-09 11:26:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.000 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:26:31 UTC] SCAN: sweep started
+[2026-10-09 11:26:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.018 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:26:37 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:26:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.069 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:26:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.119 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.168 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:07 UTC] SCAN: sweep started
+[2026-10-09 11:27:14 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:27:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.216 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.267 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.317 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:44 UTC] SCAN: sweep started
+[2026-10-09 11:27:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.369 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:27:50 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:27:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.424 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.475 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.528 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:20 UTC] SCAN: sweep started
+[2026-10-09 11:28:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.583 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:26 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:28:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.630 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.651 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.679 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:28:56 UTC] SCAN: sweep started
+[2026-10-09 11:29:03 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:29:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.726 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:29:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.777 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:29:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.831 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:29:33 UTC] SCAN: sweep started
+[2026-10-09 11:29:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.892 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:29:39 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:29:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.911 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:29:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.911 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.915 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:09 UTC] SCAN: sweep started
+[2026-10-09 11:30:16 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:30:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=0.963 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.015 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.068 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:46 UTC] SCAN: sweep started
+[2026-10-09 11:30:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.123 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:30:52 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:30:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.179 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.231 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.285 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:22 UTC] SCAN: sweep started
+[2026-10-09 11:31:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.339 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:28 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:31:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.389 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.443 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.497 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:31:58 UTC] SCAN: sweep started
+[2026-10-09 11:32:04 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:32:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.546 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:32:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.588 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:32:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.588 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:32:34 UTC] SCAN: sweep started
+[2026-10-09 11:32:36 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.588 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:32:41 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:32:46 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.613 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:32:56 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.668 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:33:06 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.737 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:33:11 UTC] SCAN: sweep started
+[2026-10-09 11:33:16 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.817 km rate_raw=0 (0.00 L/h) replies=0
+[2026-10-09 11:33:17 UTC] SCAN: sweep finished, tx failures=0
+[2026-10-09 11:33:26 UTC] FUEL: consumed=0.00000 L (0.00 mL) dist=1.890 km rate_raw=0 (0.00 L/h) replies=0

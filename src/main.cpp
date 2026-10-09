@@ -30,7 +30,20 @@
 
 // --- System Configuration Constants ---
 const float TOTAL_FUEL_CAPACITY = 13;            // 2023 US Husqvarna 701 usable Liters
-const unsigned long UDS_POLL_INTERVAL_MS = 500;
+// Fuel estimate tuning: calibrate FUEL_EST_VE against a real tank fill-up.
+const float ENGINE_DISPLACEMENT_L = 0.693f;
+const float FUEL_EST_VE = 0.85f;
+const float FUEL_EST_AFR = 14.7f;
+const float FUEL_DENSITY_G_PER_L = 745.0f;
+const unsigned long UDS_POLL_INTERVAL_MS = 100;
+
+// Side stand switch frame. UNVERIFIED: confirm against a real capture of the bike and adjust.
+// A match is logged to the error log on first sight and on every state change so the
+// ID/byte/bit can be checked while raising and lowering the stand.
+static constexpr uint32_t SIDE_STAND_CAN_ID = 0x540;
+static constexpr uint8_t SIDE_STAND_BYTE_INDEX = 4;
+static constexpr uint8_t SIDE_STAND_BIT_MASK = 0x01;
+static constexpr bool SIDE_STAND_BIT_SET_MEANS_UP = true;
 const uint16_t ENGINE_RUN_RPM_THRESHOLD = 500;      // RPM above which the engine is considered running
 #ifndef PC_SIMULATOR
 static constexpr gpio_num_t CAN_TX_PIN = GPIO_NUM_15;
@@ -56,6 +69,7 @@ struct BikeMetrics {
     bool fuelResetTriggered = false;
     bool canActive = false;
     uint8_t absModeStatus = 0;
+    uint8_t sideStandStatus = 0; // 0 = unknown, 1 = down, 2 = up
 };
 volatile BikeMetrics liveData;
 
@@ -77,9 +91,11 @@ lv_obj_t * reset_btn;
 lv_obj_t * mpg_label;
 lv_obj_t * range_label;
 lv_obj_t * rpm_bar;
+lv_obj_t * rpm_fill;
 lv_obj_t * rpm_value;
 lv_obj_t * can_status_label;
 lv_obj_t * abs_mode_label;
+lv_obj_t * side_stand_label;
 lv_obj_t * clock_label;
 
 #ifndef PC_SIMULATOR
@@ -114,6 +130,17 @@ static constexpr uint8_t PIN_SD_CS_EXPANDER = 4;
 static constexpr const char *ERROR_LOG_PATH = "/error.txt";
 static constexpr UBaseType_t ERROR_LOG_QUEUE_LENGTH = 32;
 static constexpr unsigned long SD_LOG_RETRY_INTERVAL_MS = 5000;
+static constexpr UBaseType_t CAN_LOG_QUEUE_LENGTH = 2048;
+static constexpr unsigned long CAN_LOG_FLUSH_INTERVAL_MS = 30000;
+static constexpr size_t CAN_LOG_PATH_BUFFER_SIZE = 48;
+
+struct CanLogRecord {
+    uint32_t timestampMs;
+    uint32_t identifier;
+    uint8_t length;
+    uint8_t flags; // bit0 = extended ID, bit1 = remote frame
+    uint8_t data[8];
+};
 
 struct ErrorLogRecord {
     time_t timestamp;
@@ -122,9 +149,12 @@ struct ErrorLogRecord {
 };
 
 QueueHandle_t errorLogQueue = NULL;
+QueueHandle_t canLogQueue = NULL;
 File errorLogFile;
+File canLogFile;
 volatile bool sdCardMounted = false;
 volatile uint32_t errorLogDroppedMessages = 0;
+volatile uint32_t canLogDroppedFrames = 0;
 volatile bool rtcTimeValid = false;
 time_t rtcSyncEpoch = 0;
 uint32_t rtcSyncUptimeMs = 0;
@@ -515,19 +545,114 @@ static bool open_error_log() {
     return static_cast<bool>(errorLogFile);
 }
 
+static void queue_can_log(const twai_message_t &message) {
+    if (canLogQueue == NULL) {
+        ++canLogDroppedFrames;
+        return;
+    }
+
+    CanLogRecord record = {};
+    record.timestampMs = millis();
+    record.identifier = message.identifier;
+    record.length = message.data_length_code > 8 ? 8 : message.data_length_code;
+    record.flags = (message.extd ? 0x01 : 0) | (message.rtr ? 0x02 : 0);
+    memcpy(record.data, message.data, record.length);
+
+    if (xQueueSend(canLogQueue, &record, 0) != pdTRUE) {
+        ++canLogDroppedFrames;
+    }
+}
+
+// New file per run, named CANMMDDYYYY_HHMM.csv from the RTC time; a numeric suffix keeps
+// runs started within the same minute apart.
+static bool open_can_log_file() {
+    time_t createdAt = rtcSyncEpoch + (millis() - rtcSyncUptimeMs) / 1000;
+    struct tm createdTime;
+    char timePart[16];
+    if (gmtime_r(&createdAt, &createdTime) == nullptr ||
+        strftime(timePart, sizeof(timePart), "%m%d%Y_%H%M", &createdTime) == 0) {
+        log_error("SD: failed to format CAN capture filename");
+        return false;
+    }
+
+    char path[CAN_LOG_PATH_BUFFER_SIZE];
+    int pathLength = snprintf(path, sizeof(path), "/CAN%s.csv", timePart);
+    for (uint32_t suffix = 1; pathLength > 0 && SD.exists(path) && suffix < 1000; ++suffix) {
+        pathLength = snprintf(path, sizeof(path), "/CAN%s_%lu.csv", timePart,
+                              static_cast<unsigned long>(suffix));
+    }
+    if (pathLength < 0 || static_cast<size_t>(pathLength) >= sizeof(path) || SD.exists(path)) {
+        log_error("SD: no usable CAN capture filename");
+        return false;
+    }
+
+    canLogFile = SD.open(path, FILE_WRITE);
+    if (!canLogFile) {
+        log_error("SD: failed to open CAN capture file");
+        return false;
+    }
+
+    char timestamp[32];
+    format_log_timestamp(createdAt, millis(), timestamp, sizeof(timestamp));
+    canLogFile.printf("# capture started [%s] at uptime %lu ms\n", timestamp,
+                      static_cast<unsigned long>(millis()));
+    canLogFile.println("timestamp_ms,id_hex,extended,rtr,length,data_hex");
+    canLogFile.flush();
+    log_error(path);
+    return true;
+}
+
+// Writes up to maxRecords queued frames in one batched SD write; returns how many were written.
+static size_t drain_can_log(size_t maxRecords) {
+    static char lineBuffer[1024];
+    size_t used = 0;
+    size_t written = 0;
+    CanLogRecord record;
+
+    while (written < maxRecords && xQueueReceive(canLogQueue, &record, 0) == pdTRUE) {
+        used += snprintf(lineBuffer + used, sizeof(lineBuffer) - used, "%lu,%lX,%u,%u,%u,",
+                         static_cast<unsigned long>(record.timestampMs),
+                         static_cast<unsigned long>(record.identifier),
+                         record.flags & 0x01 ? 1U : 0U, record.flags & 0x02 ? 1U : 0U,
+                         static_cast<unsigned>(record.length));
+        for (uint8_t i = 0; i < record.length; ++i) {
+            used += snprintf(lineBuffer + used, sizeof(lineBuffer) - used, "%02X", record.data[i]);
+        }
+        lineBuffer[used++] = '\n';
+        ++written;
+
+        if (used > sizeof(lineBuffer) - 96) {
+            canLogFile.write(reinterpret_cast<const uint8_t *>(lineBuffer), used);
+            used = 0;
+        }
+    }
+    if (used > 0) {
+        canLogFile.write(reinterpret_cast<const uint8_t *>(lineBuffer), used);
+    }
+    return written;
+}
+
 void SDLoggerLoop(void *) {
     if (errorLogQueue == NULL) {
         vTaskDelete(NULL);
         return;
     }
+    if (canLogQueue == NULL) {
+        log_error("SD: failed to create CAN capture queue");
+    }
 
     unsigned long now = millis();
     unsigned long lastMountAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
     unsigned long lastErrorOpenAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
+    unsigned long lastCanOpenAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
+    unsigned long lastCanFlush = now;
+    unsigned long canLogOpenedAt = now;
+    uint32_t reportedCanDrops = 0;
     ErrorLogRecord errorRecord;
 
     while (true) {
         now = millis();
+        bool didWork = false;
         if (!sdCardMounted && now - lastMountAttempt >= SD_LOG_RETRY_INTERVAL_MS) {
             lastMountAttempt = now;
             sd_log_init();
@@ -539,8 +664,36 @@ void SDLoggerLoop(void *) {
                 open_error_log();
             }
 
+            if (!canLogFile && canLogQueue != NULL && rtcTimeValid &&
+                now - lastCanOpenAttempt >= SD_LOG_RETRY_INTERVAL_MS) {
+                lastCanOpenAttempt = now;
+                open_can_log_file();
+                lastCanFlush = now;
+                canLogOpenedAt = now;
+            }
+
+            if (canLogFile) {
+                if (drain_can_log(256) > 0) {
+                    didWork = true;
+                }
+                unsigned long flushInterval =
+                    (now - canLogOpenedAt < 120000UL) ? 2000UL : CAN_LOG_FLUSH_INTERVAL_MS;
+                if (now - lastCanFlush >= flushInterval) {
+                    canLogFile.flush();
+                    lastCanFlush = now;
+                    uint32_t dropped = canLogDroppedFrames;
+                    if (dropped != reportedCanDrops) {
+                        char msg[64];
+                        snprintf(msg, sizeof(msg), "CAN log: %lu frames dropped so far",
+                                 static_cast<unsigned long>(dropped));
+                        log_error(msg);
+                        reportedCanDrops = dropped;
+                    }
+                }
+            }
+
             if (errorLogFile && rtcTimeValid &&
-                xQueueReceive(errorLogQueue, &errorRecord, pdMS_TO_TICKS(100)) == pdTRUE) {
+                xQueueReceive(errorLogQueue, &errorRecord, 0) == pdTRUE) {
                 time_t timestampEpoch = errorRecord.timestamp;
                 if (timestampEpoch <= 0) {
                     int32_t deltaMs = static_cast<int32_t>(errorRecord.timestampMs - rtcSyncUptimeMs);
@@ -551,10 +704,10 @@ void SDLoggerLoop(void *) {
                 format_log_timestamp(timestampEpoch, errorRecord.timestampMs, timestamp, sizeof(timestamp));
                 errorLogFile.printf("[%s] %s\n", timestamp, errorRecord.message);
                 errorLogFile.flush();
-                continue;
+                didWork = true;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(didWork ? 1 : 20));
     }
 }
 #endif
@@ -644,6 +797,24 @@ void CANProcessingLoop(void * pvParameters) {
     uint8_t pollIndex = 0;
     bool canWasActiveThisBoot = false;
     bool fuelLossWriteComplete = false;
+    bool absDisabled = false;
+    uint8_t mapKpa = 0;
+    int16_t iatC = 25;
+    float fuelRateLph = 0.0f;
+    unsigned long lastFuelLog = 0;
+    unsigned long lastFuelSave = 0;
+    float lastSavedConsumed = liveData.fuelConsumed;
+    float lastSavedDistance = liveData.distanceTraveledKm;
+    const unsigned long FUEL_SAVE_INTERVAL_MS = 30000;
+    bool absMoved = false;
+    uint8_t absLastSpeed = 0;
+    unsigned long absHoldStart = 0;
+#ifdef ABS_SCAN
+    int scanIdx = -1;
+    int scanTxFail = 0;
+    unsigned long scanEnd = 0;
+    unsigned long lastScanTx = 0;
+#endif
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -682,30 +853,93 @@ void CANProcessingLoop(void * pvParameters) {
         twai_message_t rx_msg;
 
         if (!busOffRecoveryStarted && currentMillis - lastUDSPoll >= UDS_POLL_INTERVAL_MS) {
-            const uint8_t polledPids[] = {0x05, 0x0C, 0x0D, 0x5E};
+            const uint8_t polledPids[] = {0x0C, 0x0D, 0x0C, 0x0B, 0x0C, 0x05, 0x0C, 0x0F};
             sendUDSPIDRequest(polledPids[pollIndex]);
-            pollIndex = (pollIndex + 1) % 3;
+            pollIndex = (pollIndex + 1) % sizeof(polledPids);
             lastUDSPoll = currentMillis;
         }
 
-        if (!busOffRecoveryStarted && twai_receive(&rx_msg, pdMS_TO_TICKS(5)) == ESP_OK &&
-            !rx_msg.extd && !rx_msg.rtr) {
-            xSemaphoreTake(dataMutex, portMAX_DELAY);
-
-            if ((rx_msg.identifier == 0x130 || rx_msg.identifier == 0x136) &&
-                rx_msg.data_length_code >= 2) {
-                uint8_t absByte = rx_msg.data[1];
-                if ((absByte & 0x0C) == 0x0C) {
-                    liveData.absModeStatus = 2;
+        bool frameReceived = !busOffRecoveryStarted &&
+                             twai_receive(&rx_msg, pdMS_TO_TICKS(5)) == ESP_OK;
+#ifdef ABS_SCAN
+        // Diagnostic sweep: probe 0x700-0x7DF with TesterPresent, ReadDTC and read VIN DID.
+        // Replies (id+8 normally) land in the CAN log. Repeats every 30 s after the sweep ends.
+        if (!busOffRecoveryStarted && canWasActiveThisBoot) {
+            if (scanIdx < 0) {
+                if (currentMillis - scanEnd >= 30000 || scanEnd == 0) {
+                    if (scanEnd == 0 && currentMillis < 15000) { /* wait for startup */ }
+                    else { scanIdx = 0; log_error("SCAN: sweep started"); }
                 }
-                else if ((absByte & 0x04) == 0x04) {
-                    liveData.absModeStatus = 1;
-                }
-                else {
-                    liveData.absModeStatus = 0;
+            } else if (currentMillis - lastScanTx >= 15) {
+                lastScanTx = currentMillis;
+                // OBD-II mode 01 sweep of every PID via the functional address.
+                twai_message_t tx = {};
+                tx.identifier = 0x7DF;
+                tx.data_length_code = 8;
+                tx.data[0] = 0x02; tx.data[1] = 0x01; tx.data[2] = (uint8_t)scanIdx;
+                esp_err_t txRes = twai_transmit(&tx, 0);
+                // TX frames are logged with extended=1 so they can be told apart from RX.
+                tx.extd = 1;
+                queue_can_log(tx);
+                if (txRes != ESP_OK) ++scanTxFail;
+                if (++scanIdx >= 256) {
+                    scanIdx = -1;
+                    scanEnd = currentMillis;
+                    char sm[48];
+                    snprintf(sm, sizeof(sm), "SCAN: sweep finished, tx failures=%d", scanTxFail);
+                    log_error(sm);
                 }
             }
-            else if (rx_msg.identifier == 0x7E8 && rx_msg.data_length_code >= 4 &&
+        }
+#endif
+        if (frameReceived) {
+            queue_can_log(rx_msg);
+        }
+
+        if (frameReceived && !rx_msg.extd && !rx_msg.rtr) {
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+
+            if (rx_msg.identifier == 0x12A && rx_msg.data_length_code >= 3) {
+                // Byte 2 bit 0 = off-road mode. ABS OFF is latched until power cycle.
+                if (absDisabled) {
+                    liveData.absModeStatus = 2;
+                } else {
+                    liveData.absModeStatus = (rx_msg.data[2] & 0x01) ? 1 : 0;
+                }
+            }
+            else if (rx_msg.identifier == 0x129 && rx_msg.data_length_code >= 1) {
+                // Byte 0 bit 3 drops low for the whole OBS button hold while stopped.
+                bool held = (rx_msg.data[0] & 0x08) == 0 && absMoved && absLastSpeed == 0;
+                if (!held) {
+                    absHoldStart = 0;
+                } else if (absHoldStart == 0) {
+                    absHoldStart = millis();
+                } else if (millis() - absHoldStart >= 5000) {
+                    absDisabled = true;
+                    liveData.absModeStatus = 2;
+                }
+            }
+            else if (rx_msg.identifier == SIDE_STAND_CAN_ID &&
+                     rx_msg.data_length_code > SIDE_STAND_BYTE_INDEX) {
+                bool bitSet = (rx_msg.data[SIDE_STAND_BYTE_INDEX] & SIDE_STAND_BIT_MASK) != 0;
+                uint8_t newStatus = (bitSet == SIDE_STAND_BIT_SET_MEANS_UP) ? 2 : 1;
+                if (newStatus != liveData.sideStandStatus) {
+                    char msg[64];
+                    snprintf(msg, sizeof(msg), "CAN: side stand %s (0x%03lX byte%u=0x%02X)",
+                             newStatus == 2 ? "UP" : "DOWN",
+                             static_cast<unsigned long>(rx_msg.identifier),
+                             static_cast<unsigned>(SIDE_STAND_BYTE_INDEX),
+                             rx_msg.data[SIDE_STAND_BYTE_INDEX]);
+                    log_error(msg);
+                }
+                liveData.sideStandStatus = newStatus;
+
+                // Byte 3 carries the gear: 0 = neutral, 1..6 = gear, 7 = shift in progress
+                if (rx_msg.data_length_code > 3 && rx_msg.data[3] <= 6) {
+                    liveData.currentGear = rx_msg.data[3];
+                }
+            }
+            else if (rx_msg.identifier >= 0x7E8 && rx_msg.identifier <= 0x7EF && rx_msg.data_length_code >= 4 &&
                      rx_msg.data[1] == 0x41) {
                 canWasActiveThisBoot = true;
                 lastValidCanResponse = millis();
@@ -719,9 +953,34 @@ void CANProcessingLoop(void * pvParameters) {
                     uint16_t rawRpm = (static_cast<uint16_t>(rx_msg.data[3]) << 8) |
                                       rx_msg.data[4];
                     liveData.engineRPM = rawRpm / 4;
+
+                    // Speed-density fuel estimate: the bike does not report fuel rate or MAF.
+                    // air (g/s) = density * VE * displacement * RPM/120 (single cylinder, 4-stroke)
+                    unsigned long currentTime = millis();
+                    if (lastFuelRateCheck != 0 && mapKpa > 0) {
+                        float tempK = iatC + 273.15f;
+                        float density = mapKpa / (0.287f * tempK);
+                        float airGs = density * FUEL_EST_VE * ENGINE_DISPLACEMENT_L *
+                                      liveData.engineRPM / 120.0f;
+                        fuelRateLph = airGs / FUEL_EST_AFR / FUEL_DENSITY_G_PER_L * 3600.0f;
+                        float deltaHours = (currentTime - lastFuelRateCheck) / 3600000.0f;
+                        liveData.fuelConsumed += fuelRateLph * deltaHours;
+                        liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
+                        if (liveData.fuelRemaining < 0.0f) {
+                            liveData.fuelRemaining = 0.0f;
+                        }
+                        if (liveData.fuelConsumed > 0.001) {
+                            float miles = liveData.distanceTraveledKm * 0.621371;
+                            float gallons = liveData.fuelConsumed * 0.264172;
+                            liveData.currentMPG = miles / gallons;
+                        }
+                    }
+                    lastFuelRateCheck = currentTime;
                 }
                 else if (rx_msg.data[2] == 0x0D) {
                     uint8_t currentSpeedKmh = rx_msg.data[3]; 
+                    absLastSpeed = currentSpeedKmh;
+                    if (currentSpeedKmh > 0) absMoved = true;
                     
                     unsigned long currentTime = millis();
                     float deltaTimeHours = (currentTime - lastTimeCheck) / 3600000.0;
@@ -737,28 +996,42 @@ void CANProcessingLoop(void * pvParameters) {
                         liveData.currentMPG = miles / gallons;
                     }
                 }
-                else if (rx_msg.data[2] == 0x5E && rx_msg.data_length_code >= 5) {
-                    unsigned long currentTime = millis();
-                    if (lastFuelRateCheck != 0) {
-                        float deltaFuelHours = (currentTime - lastFuelRateCheck) / 3600000.0;
-                        float fuelRateLitersPerHour =
-                            ((rx_msg.data[3] * 256.0f) + rx_msg.data[4]) / 20.0f;
-                        liveData.fuelConsumed += fuelRateLitersPerHour * deltaFuelHours;
-                        liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
-                        if (liveData.fuelRemaining < 0.0f) {
-                            liveData.fuelRemaining = 0.0f;
-                        }
-                    }
-                    lastFuelRateCheck = currentTime;
-
-                    if (liveData.fuelConsumed > 0.001) {
-                        float miles = liveData.distanceTraveledKm * 0.621371;
-                        float gallons = liveData.fuelConsumed * 0.264172;
-                        liveData.currentMPG = miles / gallons;
-                    }
+                else if (rx_msg.data[2] == 0x0B) {
+                    mapKpa = rx_msg.data[3];
+                }
+                else if (rx_msg.data[2] == 0x0F) {
+                    iatC = (int16_t)rx_msg.data[3] - 40;
                 }
             }
             xSemaphoreGive(dataMutex);
+        }
+
+        if (currentMillis - lastFuelLog >= 600000) {
+            lastFuelLog = currentMillis;
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+            float consumedL = liveData.fuelConsumed;
+            float distKm = liveData.distanceTraveledKm;
+            xSemaphoreGive(dataMutex);
+            char fm[128];
+            snprintf(fm, sizeof(fm), "FUEL(est): consumed=%.5f L (%.2f mL) dist=%.3f km rate=%.2f L/h MAP=%u kPa IAT=%d C",
+                     consumedL, consumedL * 1000.0f, distKm, fuelRateLph,
+                     (unsigned)mapKpa, (int)iatC);
+            log_error(fm);
+        }
+
+        // Periodic save: the display usually loses power at key-off, so the shutdown-time
+        // save can't be relied on.
+        if (canWasActiveThisBoot && currentMillis - lastFuelSave >= FUEL_SAVE_INTERVAL_MS) {
+            lastFuelSave = currentMillis;
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+            float currentConsumed = liveData.fuelConsumed;
+            float currentDistance = liveData.distanceTraveledKm;
+            xSemaphoreGive(dataMutex);
+            if (currentConsumed != lastSavedConsumed || currentDistance != lastSavedDistance) {
+                persistFuelDataIfChanged(currentConsumed, currentDistance);
+                lastSavedConsumed = currentConsumed;
+                lastSavedDistance = currentDistance;
+            }
         }
 
         if (canWasActiveThisBoot && !fuelLossWriteComplete &&
@@ -788,7 +1061,11 @@ void CANProcessingLoop(void * pvParameters) {
             persistFuelDataIfChanged(0.0f, 0.0f);
             xSemaphoreGive(dataMutex);
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
+        static uint8_t burstCount = 0;
+        if (!frameReceived || ++burstCount >= 32) {
+            burstCount = 0;
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
     }
 }
 #endif
@@ -1005,23 +1282,22 @@ void UI_Layout_Init() {
     lv_style_set_bg_opa(&style_fuel_indicator, LV_OPA_COVER);
     lv_style_set_radius(&style_fuel_indicator, 1);
 
-    rpm_bar = lv_bar_create(screen);
-    lv_obj_set_size(rpm_bar, 620, 34);                  
-    lv_obj_align(rpm_bar, LV_ALIGN_CENTER, 0, 25);      
-    lv_bar_set_range(rpm_bar, 0, RPM_MAX_SCALE);
+    // Plain objects instead of lv_bar: avoids the bar's rounded-clip draw path
+    rpm_bar = lv_obj_create(screen);
+    lv_obj_remove_style_all(rpm_bar);
+    lv_obj_set_size(rpm_bar, 620, 34);
+    lv_obj_align(rpm_bar, LV_ALIGN_CENTER, 0, 25);
+    lv_obj_remove_flag(rpm_bar, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(rpm_bar, lv_color_make(35, 35, 35), 0);
+    lv_obj_set_style_bg_opa(rpm_bar, LV_OPA_COVER, 0);
 
-    static lv_style_t style_bg;
-    lv_style_init(&style_bg);
-    lv_style_set_bg_color(&style_bg, lv_color_make(35, 35, 35));
-    lv_style_set_bg_opa(&style_bg, LV_OPA_COVER);
-    lv_style_set_radius(&style_bg, 3);                  
-    lv_obj_add_style(rpm_bar, &style_bg, LV_PART_MAIN);
-
-    static lv_style_t style_indic;
-    lv_style_init(&style_indic);
-    lv_style_set_bg_opa(&style_indic, LV_OPA_COVER);
-    lv_style_set_radius(&style_indic, 0);
-    lv_obj_add_style(rpm_bar, &style_indic, LV_PART_INDICATOR);
+    rpm_fill = lv_obj_create(rpm_bar);
+    lv_obj_remove_style_all(rpm_fill);
+    lv_obj_set_pos(rpm_fill, 0, 0);
+    lv_obj_set_size(rpm_fill, 1, 34);
+    lv_obj_remove_flag(rpm_fill, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(rpm_fill, lv_color_make(0, 220, 0), 0);
+    lv_obj_set_style_bg_opa(rpm_fill, LV_OPA_COVER, 0);
 
     fuel_label = lv_label_create(screen);
     lv_obj_align(fuel_label, LV_ALIGN_CENTER, 240, -175);
@@ -1044,11 +1320,9 @@ void UI_Layout_Init() {
     lv_obj_align(fuel_markers, LV_ALIGN_CENTER, -220, -135);
 
     temp_label = lv_label_create(screen);
-    lv_obj_align(temp_label, LV_ALIGN_CENTER, 20, -100);
-    lv_obj_add_style(temp_label, &style_large_metric, 0);
+    lv_obj_add_style(temp_label, &style_giant_gear, 0);
 
     gear_label = lv_label_create(screen);
-    lv_obj_align(gear_label, LV_ALIGN_CENTER, 0, -50);
     lv_obj_add_style(gear_label, &style_giant_gear, 0);
 
     rpm_value = lv_label_create(screen);
@@ -1056,12 +1330,10 @@ void UI_Layout_Init() {
     lv_obj_add_style(rpm_value, &style_sub_header, 0);
 
     mpg_label = lv_label_create(screen);
-    lv_obj_align(mpg_label, LV_ALIGN_CENTER, 0, 115); 
-    lv_obj_add_style(mpg_label, &style_sub_header, 0);
+    lv_obj_add_style(mpg_label, &style_giant_gear, 0);
 
     range_label = lv_label_create(screen);
-    lv_obj_align(range_label, LV_ALIGN_CENTER, 0, 155);
-    lv_obj_add_style(range_label, &style_sub_header, 0);
+    lv_obj_add_style(range_label, &style_giant_gear, 0);
 
     reset_btn = lv_button_create(screen);
     lv_obj_set_size(reset_btn, 180, 44);
@@ -1084,6 +1356,11 @@ void UI_Layout_Init() {
     lv_obj_add_style(abs_mode_label, &style_sub_header, 0);
     lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
 
+    side_stand_label = lv_label_create(screen);
+    lv_label_set_text(side_stand_label, "STAND: --");
+    lv_obj_add_style(side_stand_label, &style_sub_header, 0);
+    lv_obj_align(side_stand_label, LV_ALIGN_BOTTOM_LEFT, 20, -55);
+
     time_t currentTime = time(nullptr);
     clock_epoch_base = currentTime > 0 ? static_cast<int64_t>(currentTime) : 0;
     clock_tick_base = lv_tick_get();
@@ -1093,6 +1370,35 @@ void UI_Layout_Init() {
     lv_obj_set_clickable(clock_label, true);
     lv_obj_add_event_cb(clock_label, open_time_settings_overlay, LV_EVENT_CLICKED, nullptr);
     refresh_clock_label();
+
+    // Fixed-width labels keep their position when the text width changes
+    struct FixedLabel { lv_obj_t *label; int32_t width; lv_text_align_t align; };
+    const FixedLabel fixedLabels[] = {
+        {fuel_label, 260, LV_TEXT_ALIGN_CENTER},
+        {temp_label, 400, LV_TEXT_ALIGN_CENTER},
+        {gear_label, 400, LV_TEXT_ALIGN_CENTER},
+        {rpm_value, 300, LV_TEXT_ALIGN_CENTER},
+        {mpg_label, 400, LV_TEXT_ALIGN_CENTER},
+        {range_label, 400, LV_TEXT_ALIGN_CENTER},
+        {clock_label, 320, LV_TEXT_ALIGN_CENTER},
+        {abs_mode_label, 240, LV_TEXT_ALIGN_LEFT},
+        {side_stand_label, 240, LV_TEXT_ALIGN_LEFT},
+        {can_status_label, 80, LV_TEXT_ALIGN_RIGHT},
+    };
+    for (const FixedLabel &item : fixedLabels) {
+        lv_obj_set_width(item.label, item.width);
+        lv_obj_set_style_text_align(item.label, item.align, 0);
+    }
+    lv_obj_align(fuel_label, LV_ALIGN_CENTER, 240, -175);
+    lv_obj_align(temp_label, LV_ALIGN_CENTER, -200, -65);
+    lv_obj_align(gear_label, LV_ALIGN_CENTER, 200, -65);
+    lv_obj_align(rpm_value, LV_ALIGN_CENTER, 0, 65);
+    lv_obj_align(mpg_label, LV_ALIGN_CENTER, -200, 125);
+    lv_obj_align(range_label, LV_ALIGN_CENTER, 200, 125);
+    lv_obj_align(clock_label, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
+    lv_obj_align(side_stand_label, LV_ALIGN_BOTTOM_LEFT, 20, -55);
+    lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
 }
 
 #ifndef PC_SIMULATOR
@@ -1105,11 +1411,14 @@ void UIProcessingLoop(void * pvParameters) {
     float previousTempFahrenheit = -1000.0f;
     uint8_t previousGear = 255;
     uint16_t previousRPM = UINT16_MAX;
+    int32_t previousBarRPM = -1000;
+    int previousRpmZone = -1;
     float previousMPG = -1.0f;
     float previousDistance = -1.0f;
     float previousRange = -1.0f;
     bool previousCanActive = false;
     uint8_t previousAbsModeStatus = 255;
+    uint8_t previousSideStandStatus = 255;
 
     while(true) {
         unsigned long currentMillis = millis();
@@ -1121,8 +1430,16 @@ void UIProcessingLoop(void * pvParameters) {
         int16_t localTemp = liveData.coolantTemp;
         uint8_t localGear = liveData.currentGear;
         uint16_t localRPM = liveData.engineRPM; 
+#ifdef RPM_SWEEP
+        // Bench test: ramp 0..9000..0 over 20 s to exercise the bar without CAN data
+        {
+            uint32_t ph = millis() % 20000;
+            localRPM = (ph < 10000 ? ph : 20000 - ph) * 9 / 10;
+        }
+#endif
         bool localCanActive = liveData.canActive;
         uint8_t localAbsModeStatus = liveData.absModeStatus;
+        uint8_t localSideStandStatus = liveData.sideStandStatus;
         float localMPG = liveData.currentMPG;
         float localDistance = liveData.distanceTraveledKm * 0.621371; 
         float localRange = localFuel * 0.264172 * localMPG;
@@ -1134,7 +1451,9 @@ void UIProcessingLoop(void * pvParameters) {
         xSemaphoreGive(dataMutex);
 
         if (localFuelGallons != previousFuelGallons) {
-            lv_label_set_text_fmt(fuel_label, "FUEL: %.2f gal", localFuelGallons);
+            char text[48];
+            snprintf(text, sizeof(text), "FUEL: %.2f gal", localFuelGallons);
+            lv_label_set_text(fuel_label, text);
             previousFuelGallons = localFuelGallons;
         }
         if (localFuelPercent != previousFuelPercent) {
@@ -1143,7 +1462,9 @@ void UIProcessingLoop(void * pvParameters) {
             previousFuelPercent = localFuelPercent;
         }
         if (localTempFahrenheit != previousTempFahrenheit) {
-            lv_label_set_text_fmt(temp_label, "TEMP: %.0f F", localTempFahrenheit);
+            char text[48];
+            snprintf(text, sizeof(text), "TEMP: %.0f F", localTempFahrenheit);
+            lv_label_set_text(temp_label, text);
             previousTempFahrenheit = localTempFahrenheit;
         }
         
@@ -1158,31 +1479,43 @@ void UIProcessingLoop(void * pvParameters) {
 
         bool rpmChanged = localRPM != previousRPM;
         if (rpmChanged) {
-            lv_bar_set_value(rpm_bar, localRPM, LV_ANIM_OFF);
+            // Redraw the wide bar only on visible steps (~3 px) to limit LCD redraw load
+            int32_t barValue = localRPM > RPM_MAX_SCALE ? RPM_MAX_SCALE : localRPM;
+            if (abs(barValue - previousBarRPM) >= 50 || barValue == 0) {
+                int32_t fillWidth = (int32_t)((int64_t)barValue * 620 / RPM_MAX_SCALE);
+                lv_obj_set_width(rpm_fill, fillWidth < 1 ? 1 : fillWidth);
+                previousBarRPM = barValue;
+            }
             lv_label_set_text_fmt(rpm_value, "%u RPM", localRPM);
             previousRPM = localRPM;
         }
 
         if (rpmChanged) {
-            if (localRPM < RPM_PEAK_POWER) {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(0, 220, 0), LV_PART_INDICATOR);
-            }
-            else if (localRPM < RPM_REDLINE) {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(240, 240, 0), LV_PART_INDICATOR);
-            }
-            else {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_make(255, 0, 0), LV_PART_INDICATOR);
+            int zone = localRPM < RPM_PEAK_POWER ? 0 : (localRPM < RPM_REDLINE ? 1 : 2);
+            if (zone != previousRpmZone) {
+                previousRpmZone = zone;
+                if (zone == 0) {
+                    lv_obj_set_style_bg_color(rpm_fill, lv_color_make(0, 220, 0), 0);
+                } else if (zone == 1) {
+                    lv_obj_set_style_bg_color(rpm_fill, lv_color_make(240, 240, 0), 0);
+                } else {
+                    lv_obj_set_style_bg_color(rpm_fill, lv_color_make(255, 0, 0), 0);
+                }
             }
         }
 
         if (localMPG != previousMPG || localDistance != previousDistance) {
-            lv_label_set_text_fmt(mpg_label, "ECONOMY: %.1f MPG (%.1f mi)", localMPG, localDistance);
+            char text[64];
+            snprintf(text, sizeof(text), "ECON: %.1f MPG", localMPG);
+            lv_label_set_text(mpg_label, text);
             previousMPG = localMPG;
             previousDistance = localDistance;
         }
         if (localRange != previousRange || localMPG != previousMPG) {
             if (localMPG > 0.0f) {
-                lv_label_set_text_fmt(range_label, "RANGE: %.1f mi", localRange);
+                char text[48];
+                snprintf(text, sizeof(text), "RANGE: %.0f mi", localRange);
+                lv_label_set_text(range_label, text);
             } else {
                 lv_label_set_text(range_label, "RANGE: -- mi");
             }
@@ -1208,6 +1541,21 @@ void UIProcessingLoop(void * pvParameters) {
                 lv_label_set_text(abs_mode_label, "ABS: ON");
             }
             previousAbsModeStatus = localAbsModeStatus;
+        }
+
+        if (localSideStandStatus != previousSideStandStatus) {
+            if (localSideStandStatus == 1) {
+                lv_label_set_text(side_stand_label, "STAND: DOWN");
+                lv_obj_set_style_text_color(side_stand_label, lv_color_hex(0xE74C3C), 0);
+            }
+            else if (localSideStandStatus == 2) {
+                lv_label_set_text(side_stand_label, "STAND: UP");
+                lv_obj_set_style_text_color(side_stand_label, lv_color_hex(0x2ECC71), 0);
+            }
+            else {
+                lv_label_set_text(side_stand_label, "STAND: --");
+            }
+            previousSideStandStatus = localSideStandStatus;
         }
 
         refresh_clock_label();
@@ -1241,6 +1589,7 @@ void setup() {
     touchMutex = xSemaphoreCreateMutex();
     sharedI2cMutex = xSemaphoreCreateMutex();
     errorLogQueue = xQueueCreate(ERROR_LOG_QUEUE_LENGTH, sizeof(ErrorLogRecord));
+    canLogQueue = xQueueCreate(CAN_LOG_QUEUE_LENGTH, sizeof(CanLogRecord));
     if (sharedI2cMutex == NULL) {
         log_error("I2C: failed to create shared bus mutex");
     }
@@ -1303,7 +1652,9 @@ void setup() {
     if (canTaskResult != pdPASS) {
         log_error("BOOT: CAN task creation failed");
     }
-    xTaskCreatePinnedToCore(SDLoggerLoop, "SDLogger", 4096, NULL, 0, &SDLoggerTaskHandle, 1);
+#ifndef DISABLE_SD_LOGGING
+    xTaskCreatePinnedToCore(SDLoggerLoop, "SDLogger", 6144, NULL, 0, &SDLoggerTaskHandle, 0);
+#endif
 }
 
 void loop() {
