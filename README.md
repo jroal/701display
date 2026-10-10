@@ -5,3 +5,5 @@ This project uses an ESP32-S3 4.3inch Capacitive Touch LCD Development Board Typ
 I used this hardware: https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B 
 
 I used Visual Studio Code for an IDE: https://code.visualstudio.com/ 
+
+More documentation in this blog post: https://jimroal.blogspot.com/2026/10/husqvarna-701-can-touch-display.html 
