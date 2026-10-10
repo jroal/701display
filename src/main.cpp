@@ -35,7 +35,22 @@ const float ENGINE_DISPLACEMENT_L = 0.693f;
 const float FUEL_EST_VE = 0.85f;
 const float FUEL_EST_AFR = 14.7f;
 const float FUEL_DENSITY_G_PER_L = 745.0f;
-const unsigned long UDS_POLL_INTERVAL_MS = 100;
+// Per-PID poll periods (ms). Every request on the bus coupled into the display, so keep them low.
+#ifndef UDS_RPM_MS
+#define UDS_RPM_MS 250
+#endif
+#ifndef UDS_MAP_MS
+#define UDS_MAP_MS 500
+#endif
+#ifndef UDS_SPEED_MS
+#define UDS_SPEED_MS 500
+#endif
+#ifndef UDS_SLOW_MS
+#define UDS_SLOW_MS 1000
+#endif
+#ifndef UDS_MIN_GAP_MS
+#define UDS_MIN_GAP_MS 100
+#endif
 
 // Side stand switch frame. UNVERIFIED: confirm against a real capture of the bike and adjust.
 // A match is logged to the error log on first sight and on every state change so the
@@ -461,7 +476,7 @@ static void hardware_flush_cb(lv_display_t *display, const lv_area_t *area, uint
 }
 
 static bool hardware_display_init() {
-    constexpr size_t BUFFER_LINES = 40;
+    constexpr size_t BUFFER_LINES = 30;
 
     hardwarePanel.init();
     hardwarePanel.begin();
@@ -545,6 +560,7 @@ static bool open_error_log() {
     return static_cast<bool>(errorLogFile);
 }
 
+#ifndef DISABLE_SD_LOGGING
 static void queue_can_log(const twai_message_t &message) {
     if (canLogQueue == NULL) {
         ++canLogDroppedFrames;
@@ -562,6 +578,7 @@ static void queue_can_log(const twai_message_t &message) {
         ++canLogDroppedFrames;
     }
 }
+#endif
 
 // New file per run, named CANMMDDYYYY_HHMM.csv from the RTC time; a numeric suffix keeps
 // runs started within the same minute apart.
@@ -733,7 +750,15 @@ static bool can_init() {
     twai_general_config_t generalConfig =
         TWAI_GENERAL_CONFIG_DEFAULT(CAN_TX_PIN, CAN_RX_PIN, TWAI_MODE_NORMAL);
     twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_500KBITS();
-    twai_filter_config_t filterConfig = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+    // Dual hardware filter so the ISR only fires for the few IDs we use (bus traffic
+    // while running otherwise floods core 0 with interrupts).
+    // Filter 1: 0x129/0x12A/0x540 (don't-care bits widen it to 64 IDs); filter 2: 0x7E8-0x7EF.
+    const uint32_t ids1 = 0x12A, dc1 = 0x003 | (0x129 ^ 0x12A) | (0x12A ^ 0x540);
+    const uint32_t ids2 = 0x7E8, dc2 = 0x007;
+    twai_filter_config_t filterConfig = {};
+    filterConfig.single_filter = false;
+    filterConfig.acceptance_code = (ids1 << 21) | (ids2 << 5);
+    filterConfig.acceptance_mask = (dc1 << 21) | (0x1Fu << 16) | (dc2 << 5) | 0x1Fu;
 
     if (twai_driver_install(&generalConfig, &timingConfig, &filterConfig) != ESP_OK) {
         log_error("TWAI: driver installation failed");
@@ -794,7 +819,6 @@ void CANProcessingLoop(void * pvParameters) {
     unsigned long lastTimeCheck = millis();
     unsigned long lastFuelRateCheck = 0;
     unsigned long lastValidCanResponse = 0;
-    uint8_t pollIndex = 0;
     bool canWasActiveThisBoot = false;
     bool fuelLossWriteComplete = false;
     bool absDisabled = false;
@@ -852,11 +876,27 @@ void CANProcessingLoop(void * pvParameters) {
 
         twai_message_t rx_msg;
 
-        if (!busOffRecoveryStarted && currentMillis - lastUDSPoll >= UDS_POLL_INTERVAL_MS) {
-            const uint8_t polledPids[] = {0x0C, 0x0D, 0x0C, 0x0B, 0x0C, 0x05, 0x0C, 0x0F};
-            sendUDSPIDRequest(polledPids[pollIndex]);
-            pollIndex = (pollIndex + 1) % sizeof(polledPids);
-            lastUDSPoll = currentMillis;
+        if (!busOffRecoveryStarted && currentMillis - lastUDSPoll >= UDS_MIN_GAP_MS) {
+            // Each PID has its own period; the most overdue one goes first.
+            struct PidSched { uint8_t pid; unsigned long period; };
+            static const PidSched sched[] = {
+                {0x0C, UDS_RPM_MS}, {0x0B, UDS_MAP_MS}, {0x0D, UDS_SPEED_MS},
+                {0x05, UDS_SLOW_MS}, {0x0F, UDS_SLOW_MS}};
+            static unsigned long lastSent[sizeof(sched) / sizeof(sched[0])] = {};
+            int best = -1;
+            unsigned long bestOverdue = 0;
+            for (size_t i = 0; i < sizeof(sched) / sizeof(sched[0]); ++i) {
+                unsigned long age = currentMillis - lastSent[i];
+                if (age >= sched[i].period && age - sched[i].period >= bestOverdue) {
+                    bestOverdue = age - sched[i].period;
+                    best = static_cast<int>(i);
+                }
+            }
+            if (best >= 0) {
+                sendUDSPIDRequest(sched[best].pid);
+                lastSent[best] = currentMillis;
+                lastUDSPoll = currentMillis;
+            }
         }
 
         bool frameReceived = !busOffRecoveryStarted &&
@@ -880,7 +920,9 @@ void CANProcessingLoop(void * pvParameters) {
                 esp_err_t txRes = twai_transmit(&tx, 0);
                 // TX frames are logged with extended=1 so they can be told apart from RX.
                 tx.extd = 1;
+#ifndef DISABLE_SD_LOGGING
                 queue_can_log(tx);
+#endif
                 if (txRes != ESP_OK) ++scanTxFail;
                 if (++scanIdx >= 256) {
                     scanIdx = -1;
@@ -892,9 +934,11 @@ void CANProcessingLoop(void * pvParameters) {
             }
         }
 #endif
+#ifndef DISABLE_SD_LOGGING
         if (frameReceived) {
             queue_can_log(rx_msg);
         }
+#endif
 
         if (frameReceived && !rx_msg.extd && !rx_msg.rtr) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
@@ -1388,6 +1432,7 @@ void UI_Layout_Init() {
     for (const FixedLabel &item : fixedLabels) {
         lv_obj_set_width(item.label, item.width);
         lv_obj_set_style_text_align(item.label, item.align, 0);
+        lv_label_set_long_mode(item.label, LV_LABEL_LONG_CLIP);
     }
     lv_obj_align(fuel_label, LV_ALIGN_CENTER, 240, -175);
     lv_obj_align(temp_label, LV_ALIGN_CENTER, -200, -65);
@@ -1506,7 +1551,7 @@ void UIProcessingLoop(void * pvParameters) {
 
         if (localMPG != previousMPG || localDistance != previousDistance) {
             char text[64];
-            snprintf(text, sizeof(text), "ECON: %.1f MPG", localMPG);
+            snprintf(text, sizeof(text), "ECON: %.1f", localMPG);
             lv_label_set_text(mpg_label, text);
             previousMPG = localMPG;
             previousDistance = localDistance;
@@ -1577,7 +1622,7 @@ void UIProcessingLoop(void * pvParameters) {
         }
 
         lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(16)); 
+        vTaskDelay(pdMS_TO_TICKS(16));
     }
 }
 
@@ -1589,7 +1634,9 @@ void setup() {
     touchMutex = xSemaphoreCreateMutex();
     sharedI2cMutex = xSemaphoreCreateMutex();
     errorLogQueue = xQueueCreate(ERROR_LOG_QUEUE_LENGTH, sizeof(ErrorLogRecord));
+#ifndef DISABLE_SD_LOGGING
     canLogQueue = xQueueCreate(CAN_LOG_QUEUE_LENGTH, sizeof(CanLogRecord));
+#endif
     if (sharedI2cMutex == NULL) {
         log_error("I2C: failed to create shared bus mutex");
     }

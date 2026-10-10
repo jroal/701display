@@ -32,6 +32,22 @@
             "group": "build"
         },
         {
+            "label": "Upload Hardware",
+            "type": "shell",
+            "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
+            "args": [
+                "run",
+                "--environment",
+                "waveshare_esp32s3_43b",
+                "--target",
+                "upload"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
             "label": "Clean Emulator",
             "type": "shell",
             "command": "C:\\Users\\jroal\\.platformio\\penv\\Scripts\\platformio.exe",
