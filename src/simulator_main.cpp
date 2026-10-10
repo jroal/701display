@@ -16,6 +16,7 @@ void create_dashboard();
 
 // --- 🌐 USE EXTERN TO BIND TO EXISTING TRACKS & STOP MULTIPLE DEFINITIONS ---
 extern lv_obj_t *rpm_bar;
+extern lv_obj_t *rpm_fill;
 extern lv_obj_t *rpm_value;
 extern lv_obj_t *can_status_label;
 extern lv_obj_t *abs_mode_label;
@@ -136,16 +137,17 @@ int main(int, char **) {
             }
             
             // Updates metrics safely across your top progress indicator gauge
-            lv_bar_set_value(rpm_bar, rpm, LV_ANIM_OFF);
+            int fill_width = rpm * 620 / 10000;
+            lv_obj_set_width(rpm_fill, fill_width < 1 ? 1 : fill_width);
             lv_label_set_text_fmt(rpm_value, "%d RPM", rpm);
-            
-            // Dynamic progressive coloration shifts map natively here
+
+            // Same zones as the firmware: green < 8000, yellow < 9000, red above
             if (rpm < 8000) {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_hex(0x2ECC71), LV_PART_INDICATOR);
+                lv_obj_set_style_bg_color(rpm_fill, lv_color_make(0, 220, 0), 0);
             } else if (rpm < 9000) {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_hex(0xF1C40F), LV_PART_INDICATOR);
+                lv_obj_set_style_bg_color(rpm_fill, lv_color_make(240, 240, 0), 0);
             } else {
-                lv_obj_set_style_bg_color(rpm_bar, lv_color_hex(0xE74C3C), LV_PART_INDICATOR);
+                lv_obj_set_style_bg_color(rpm_fill, lv_color_make(255, 0, 0), 0);
             }
             last_update = now;
         }

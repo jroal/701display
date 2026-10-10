@@ -30,11 +30,46 @@
 
 // --- System Configuration Constants ---
 const float TOTAL_FUEL_CAPACITY = 13;            // 2023 US Husqvarna 701 usable Liters
-// Fuel estimate tuning: calibrate FUEL_EST_VE against a real tank fill-up.
+// Fuel estimate tuning: calibrate the VE map against a real tank fill-up.
 const float ENGINE_DISPLACEMENT_L = 0.693f;
-const float FUEL_EST_VE = 0.85f;
 const float FUEL_EST_AFR = 14.7f;
 const float FUEL_DENSITY_G_PER_L = 745.0f;
+
+// Volumetric efficiency (%) by MAP (rows) and RPM (columns).
+const float map_bins[10] = {20, 30, 40, 50, 60, 70, 80, 90, 100, 110};
+const float rpm_bins[9] = {1600, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000};
+const float ve_map[10][9] PROGMEM = {
+  {42.0, 48.0, 62.0, 73.7, 82.7,  93.8,  93.0,  91.2,  89.0}, // 20 kPa
+  {44.0, 50.0, 64.0, 75.2, 84.4,  95.8,  94.9,  91.4,  90.8}, // 30 kPa
+  {45.0, 52.0, 66.0, 72.6, 80.0,  97.7,  97.1,  92.8,  89.5}, // 40 kPa
+  {48.0, 55.0, 70.0, 75.4, 83.2, 107.0, 107.4,  99.3,  96.8}, // 50 kPa
+  {50.0, 58.0, 74.0, 83.6, 91.3, 112.3, 113.4, 104.4, 101.5}, // 60 kPa
+  {51.0, 60.0, 78.0, 93.4, 97.3, 117.0, 118.3, 108.6, 105.5}, // 70 kPa
+  {52.0, 62.0, 82.0, 99.4, 100.9, 120.3, 122.0, 115.8, 108.3}, // 80 kPa
+  {53.0, 63.0, 84.0, 100.5, 104.3, 124.0, 123.2, 117.6, 110.3}, // 90 kPa
+  {54.0, 64.0, 85.0, 101.0, 105.8, 125.1, 124.0, 118.1, 112.7}, // 100 kPa
+  {55.0, 65.0, 86.0, 103.0, 108.0, 127.6, 126.5, 120.5, 115.0}  // 110 kPa
+};
+
+// Finds the bin pair around value (clamped to the table edges) and the blend fraction.
+static void find_bin(const float *bins, int count, float value, int &lower, float &fraction) {
+    if (value <= bins[0]) { lower = 0; fraction = 0.0f; return; }
+    if (value >= bins[count - 1]) { lower = count - 2; fraction = 1.0f; return; }
+    lower = 0;
+    while (value > bins[lower + 1]) ++lower;
+    fraction = (value - bins[lower]) / (bins[lower + 1] - bins[lower]);
+}
+
+// Bilinear interpolation of the VE map; returns VE as a fraction (1.0 = 100%).
+static float lookup_ve(float mapKpa, float rpm) {
+    int r, c;
+    float rf, cf;
+    find_bin(map_bins, 10, mapKpa, r, rf);
+    find_bin(rpm_bins, 9, rpm, c, cf);
+    float top = ve_map[r][c] + (ve_map[r][c + 1] - ve_map[r][c]) * cf;
+    float bottom = ve_map[r + 1][c] + (ve_map[r + 1][c + 1] - ve_map[r + 1][c]) * cf;
+    return (top + (bottom - top) * rf) / 100.0f;
+}
 // Per-PID poll periods (ms). Every request on the bus coupled into the display, so keep them low.
 #ifndef UDS_RPM_MS
 #define UDS_RPM_MS 250
@@ -224,8 +259,18 @@ static void hardware_touch_read_cb(lv_indev_t *, lv_indev_data_t *data) {
     }
 }
 
+static uint8_t expanderOutputLevels = 0xFF;
+static bool expander_write_io(uint8_t outputLevels);
+
 void TouchProcessingLoop(void *) {
+    uint32_t lastExpanderRefresh = millis();
     while (true) {
+        // The CH422G has no register addressing, so a glitched I2C transaction can overwrite
+        // its outputs (backlight, LCD/touch reset). Re-assert the intended levels regularly.
+        if (millis() - lastExpanderRefresh >= 250) {
+            lastExpanderRefresh = millis();
+            expander_write_io(expanderOutputLevels);
+        }
         if (hardwareTouch != nullptr) {
             if (sharedI2cMutex != NULL) {
                 xSemaphoreTake(sharedI2cMutex, portMAX_DELAY);
@@ -267,6 +312,9 @@ static bool expander_write_io(uint8_t outputLevels) {
     Wire.beginTransmission(CH422G_IO_WRITE_ADDRESS);
     Wire.write(outputLevels);
     bool success = Wire.endTransmission() == 0;
+    if (success) {
+        expanderOutputLevels = outputLevels;
+    }
     if (sharedI2cMutex != NULL) {
         xSemaphoreGive(sharedI2cMutex);
     }
@@ -1004,7 +1052,8 @@ void CANProcessingLoop(void * pvParameters) {
                     if (lastFuelRateCheck != 0 && mapKpa > 0) {
                         float tempK = iatC + 273.15f;
                         float density = mapKpa / (0.287f * tempK);
-                        float airGs = density * FUEL_EST_VE * ENGINE_DISPLACEMENT_L *
+                        float airGs = density * lookup_ve(mapKpa, liveData.engineRPM) *
+                                      ENGINE_DISPLACEMENT_L *
                                       liveData.engineRPM / 120.0f;
                         fuelRateLph = airGs / FUEL_EST_AFR / FUEL_DENSITY_G_PER_L * 3600.0f;
                         float deltaHours = (currentTime - lastFuelRateCheck) / 3600000.0f;
