@@ -17,6 +17,7 @@
     #include <ESP_Panel_Library.h>
     #include <esp_log.h>
     #include <esp_heap_caps.h>
+    #include "ble_telemetry.h"
 #endif
 
 // Support both standard project directory formats cleanly
@@ -1678,6 +1679,28 @@ void UIProcessingLoop(void * pvParameters) {
     }
 }
 
+static void ble_get_snapshot(BleSnapshot &out) {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    out.rpm = liveData.engineRPM;
+    out.coolantTempC = liveData.coolantTemp;
+    out.gear = liveData.currentGear;
+    out.canActive = liveData.canActive;
+    out.absMode = liveData.absModeStatus;
+    out.sideStand = liveData.sideStandStatus;
+    out.fuelLiters = liveData.fuelRemaining;
+    out.mpg = liveData.currentMPG;
+    xSemaphoreGive(dataMutex);
+
+    float percent = (out.fuelLiters / TOTAL_FUEL_CAPACITY) * 100.0f + 0.5f;
+    out.fuelPercent = percent < 0.0f ? 0 : (percent > 100.0f ? 100 : (uint8_t)percent);
+}
+
+static void ble_on_command(uint8_t command) {
+    if (command == BLE_CMD_RESET_FUEL) {
+        liveData.fuelResetTriggered = true;
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -1754,6 +1777,7 @@ void setup() {
 #ifndef DISABLE_SD_LOGGING
     xTaskCreatePinnedToCore(SDLoggerLoop, "SDLogger", 6144, NULL, 0, &SDLoggerTaskHandle, 0);
 #endif
+    ble_telemetry_begin(ble_get_snapshot, ble_on_command);
 }
 
 void loop() {
