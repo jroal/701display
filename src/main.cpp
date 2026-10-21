@@ -263,14 +263,7 @@ static uint8_t expanderOutputLevels = 0xFF;
 static bool expander_write_io(uint8_t outputLevels);
 
 void TouchProcessingLoop(void *) {
-    uint32_t lastExpanderRefresh = millis();
     while (true) {
-        // The CH422G has no register addressing, so a glitched I2C transaction can overwrite
-        // its outputs (backlight, LCD/touch reset). Re-assert the intended levels regularly.
-        if (millis() - lastExpanderRefresh >= 250) {
-            lastExpanderRefresh = millis();
-            expander_write_io(expanderOutputLevels);
-        }
         if (hardwareTouch != nullptr) {
             if (sharedI2cMutex != NULL) {
                 xSemaphoreTake(sharedI2cMutex, portMAX_DELAY);
@@ -528,6 +521,10 @@ static bool hardware_display_init() {
 
     hardwarePanel.init();
     hardwarePanel.begin();
+    // Panel init drives the expander too; restore the levels this firmware expects.
+    if (!expander_write_io(expanderOutputLevels)) {
+        log_error("EXPANDER: failed to restore levels after panel initialization");
+    }
     hardwareLcd = hardwarePanel.getLcd();
     if (hardwareLcd == nullptr) {
         log_error("DISPLAY: LCD initialization failed");
@@ -566,10 +563,16 @@ static bool hardware_display_init() {
 }
 
 static bool sd_log_init() {
-    uint8_t outputLevels = static_cast<uint8_t>(0xFF & ~(1U << PIN_SD_CS_EXPANDER));
-    if (!expander_write_io(outputLevels)) {
-        log_error("SD: failed to assert card-select through CH422G");
-        return false;
+    // Write the expander once: repeating the I2C write on every retry while no card is
+    // present competes with the touch/panel traffic and can glitch the backlight.
+    static bool expanderPrepared = false;
+    if (!expanderPrepared) {
+        uint8_t outputLevels = static_cast<uint8_t>(0xFF & ~(1U << PIN_SD_CS_EXPANDER));
+        if (!expander_write_io(outputLevels)) {
+            log_error("SD: failed to assert card-select through CH422G");
+            return false;
+        }
+        expanderPrepared = true;
     }
 
     if (!sdSpiStarted) {
