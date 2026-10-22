@@ -1708,6 +1708,10 @@ void setup() {
     dataMutex = xSemaphoreCreateMutex();
     touchMutex = xSemaphoreCreateMutex();
     sharedI2cMutex = xSemaphoreCreateMutex();
+    // Start BLE before the display grabs its large buffers; Bluedroid needs internal RAM.
+    Serial.printf("BLE: free internal heap before init %u\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    ble_telemetry_begin(ble_get_snapshot, ble_on_command);
+    Serial.printf("BLE: advertising as %s, free internal heap %u\n", BLE_DEVICE_NAME, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     errorLogQueue = xQueueCreate(ERROR_LOG_QUEUE_LENGTH, sizeof(ErrorLogRecord));
 #ifndef DISABLE_SD_LOGGING
     canLogQueue = xQueueCreate(CAN_LOG_QUEUE_LENGTH, sizeof(CanLogRecord));
@@ -1777,7 +1781,6 @@ void setup() {
 #ifndef DISABLE_SD_LOGGING
     xTaskCreatePinnedToCore(SDLoggerLoop, "SDLogger", 6144, NULL, 0, &SDLoggerTaskHandle, 0);
 #endif
-    ble_telemetry_begin(ble_get_snapshot, ble_on_command);
 }
 
 void loop() {

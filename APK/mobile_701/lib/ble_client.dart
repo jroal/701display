@@ -43,10 +43,20 @@ class BleClient extends ChangeNotifier {
           await Future.delayed(const Duration(seconds: 3));
           continue;
         }
-        if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+        // The adapter state is "unknown" until the first stream event, and stays
+        // unknown/unauthorized until permissions are granted. Only report
+        // "off" when the adapter explicitly says so.
+        final state = await FlutterBluePlus.adapterState
+            .firstWhere((s) => s != BluetoothAdapterState.unknown)
+            .timeout(const Duration(seconds: 3),
+                onTimeout: () => BluetoothAdapterState.unknown);
+        if (state == BluetoothAdapterState.off) {
           _setStatus(BleStatus.bluetoothOff);
           await Future.delayed(const Duration(seconds: 2));
           continue;
+        }
+        if (state == BluetoothAdapterState.unauthorized) {
+          _setStatus(BleStatus.needPermission);
         }
         final device = await _scan();
         if (device == null) continue;
@@ -63,20 +73,32 @@ class BleClient extends ChangeNotifier {
     return true;
   }
 
+  /// Short summary of the last scan, shown in the UI to diagnose discovery problems.
+  String scanInfo = '';
+
+  bool _isTarget(ScanResult r) =>
+      r.advertisementData.serviceUuids.contains(serviceUuid) ||
+      r.advertisementData.advName == 'Husky701' ||
+      r.device.platformName == 'Husky701';
+
   Future<BluetoothDevice?> _scan() async {
     _setStatus(BleStatus.scanning);
     final completer = Completer<BluetoothDevice?>();
+    var seen = 0;
     final sub = FlutterBluePlus.onScanResults.listen((results) {
-      if (results.isNotEmpty && !completer.isCompleted) {
-        completer.complete(results.last.device);
+      seen = results.length;
+      scanInfo = '$seen devices seen';
+      notifyListeners();
+      for (final r in results) {
+        if (_isTarget(r) && !completer.isCompleted) {
+          completer.complete(r.device);
+        }
       }
     });
-    await FlutterBluePlus.startScan(
-      withServices: [serviceUuid],
-      timeout: const Duration(seconds: 10),
-    );
+    // No service filter: some stacks drop 128-bit UUID filters; match by UUID or name instead.
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
     final device = await completer.future.timeout(
-      const Duration(seconds: 11),
+      const Duration(seconds: 1),
       onTimeout: () => null,
     );
     await sub.cancel();

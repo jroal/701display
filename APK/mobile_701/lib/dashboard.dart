@@ -171,7 +171,12 @@ class _DashboardState extends State<Dashboard> {
         // BLE link state (not on the ESP32 screen; kept small in the corner)
         Positioned(
           right: 8, top: 6,
-          child: _label(_statusText(ble.status), 14, live ? _green : _yellow),
+          child: _label(
+              ble.status == BleStatus.scanning && ble.scanInfo.isNotEmpty
+                  ? '${_statusText(ble.status)} (${ble.scanInfo})'
+                  : _statusText(ble.status),
+              14,
+              live ? _green : _yellow),
         ),
       ],
     );
