@@ -9,4 +9,5 @@ I used Visual Studio Code for an IDE: https://code.visualstudio.com/
 More documentation in this blog post: https://jimroal.blogspot.com/2026/10/husqvarna-701-can-touch-display.html 
 
 October 21, 2026: Added Flutter project to develop mobile apps for receiving the data via BLE. The ESP32 will be the BLE server. Mobile apps will receive this BLE data for display on phones or tablets. I only created the basic framework so far (empty mobile apps). The goal is to broadcast this data via BLE so motorcycle tablets or phones can receive and display it. If this becomes prime path for the display of the data, I will get a smaller ESP32 with no display. For now the Waveshare ESP32-S3 display will perform this function. In order for a smaller non-display device to perform this function a fuel reset and time setting feature will need to be added to the mobile app(s). 
+
 October 22, 2026: Android app and BLE server working.
