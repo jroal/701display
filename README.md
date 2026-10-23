@@ -6,7 +6,7 @@ This project uses an ESP32-S3 4.3inch Capacitive Touch LCD Development Board Typ
 
 ## CAN Hardware
 
-I used this hardware: [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B}(https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) to get started. However, longer tem this project will likely go to headless hardware and use mobile apps for the display. 
+I used this hardware: [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) to get started. However, longer tem this project will likely go to headless hardware and use mobile apps for the display. 
 
 I used Visual Studio Code for an IDE: [https://code.visualstudio.com/](https://code.visualstudio.com/) 
 
