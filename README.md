@@ -14,6 +14,9 @@ More documentation in this blog post: [https://jimroal.blogspot.com/2026/10/husq
 
 I made a T harness with a plug and socket for the Euro 5 motorcycle OBD port. This allows other devices such as Veridian cruise control or an OBD scan tool to still be connected. I use power, ground, and the CAN wires to connect to the ESP32 hardware. The ESP32 reads CAN data that is used by the display. It requires data from both the engine ECU and the ABS ECU. This system will not work without the ABS ECU operating properly. 
 
+<img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
+
+
 ## Android Display Application
 
 I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market (Topnavi, HardRock, etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo.
