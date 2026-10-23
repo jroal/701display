@@ -12,10 +12,11 @@ I used Visual Studio Code for an IDE: [https://code.visualstudio.com/](https://c
 
 More documentation in this blog post: [https://jimroal.blogspot.com/2026/10/husqvarna-701-can-touch-display.html](https://jimroal.blogspot.com/2026/10/husqvarna-701-can-touch-display.html) 
 
-I made a T harness with a plug and socket for the Euro 5 motorcycle OBD port. This allows other devices such as Veridian cruise control or an OBD scan tool to still be connected. I use power, ground, and the CAN wires to connect to the ESP32 hardware. The ESP32 reads CAN data that is used by the display. It requires data from both the engine ECU and the ABS ECU. This system will not work without the ABS ECU operating properly. 
+I made a T harness with a plug and socket for the Euro 5 motorcycle OBD port. This allows other devices such as Veridian cruise control or an OBD scan tool to still be connected. I use power, ground, and the CAN wires to connect to the ESP32 hardware. The ESP32 reads CAN data that is used by the display. It requires data from both the engine ECU and the ABS ECU. This system will not work without the ABS ECU operating properly. The image below shows the Euro 5 OBD port on the motorcycle, looking in at the face of the connector.
 
 <img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
 
+I used 5-pin ebike connectors at the display end of the wiring harness so I could remove the display without removing the wire harness.
 
 ## Android Display Application
 
