@@ -50,8 +50,8 @@ class ServerCallbacks : public BLEServerCallbacks {
 class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) override {
         if (commandFn == nullptr) return;
-        std::string value = c->getValue();
-        if (!value.empty()) commandFn((uint8_t)value[0]);
+        String value = c->getValue();
+        if (value.length() > 0) commandFn((uint8_t)value[0]);
     }
 };
 
