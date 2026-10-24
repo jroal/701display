@@ -50,7 +50,7 @@ class ServerCallbacks : public BLEServerCallbacks {
 class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) override {
         if (commandFn == nullptr) return;
-        String value = c->getValue();
+        auto value = c->getValue();
         if (value.length() > 0) commandFn((uint8_t)value[0]);
     }
 };
