@@ -26,12 +26,18 @@ void ble_telemetry_pack(const BleSnapshot &s, uint8_t out[BLE_PACKET_SIZE]) {
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <stdio.h>
 
 static BLEServer *bleServer = nullptr;
 static BLECharacteristic *telemetryChar = nullptr;
 static BleSnapshotFn snapshotFn = nullptr;
 static BleCommandFn commandFn = nullptr;
 static volatile bool bleConnected = false;
+static char bleDeviceName[sizeof(BLE_DEVICE_NAME) + 7] = BLE_DEVICE_NAME;
+
+const char *ble_telemetry_device_name() {
+    return bleDeviceName;
+}
 
 class ServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *) override { bleConnected = true; }
@@ -67,7 +73,9 @@ void ble_telemetry_begin(BleSnapshotFn snapshot, BleCommandFn onCommand) {
     snapshotFn = snapshot;
     commandFn = onCommand;
 
-    BLEDevice::init(BLE_DEVICE_NAME);
+    snprintf(bleDeviceName, sizeof(bleDeviceName), "%s-%06lX", BLE_DEVICE_NAME,
+             (unsigned long)(ESP.getEfuseMac() & 0xFFFFFF));
+    BLEDevice::init(bleDeviceName);
     bleServer = BLEDevice::createServer();
     bleServer->setCallbacks(new ServerCallbacks());
 
@@ -85,6 +93,9 @@ void ble_telemetry_begin(BleSnapshotFn snapshot, BleCommandFn onCommand) {
 
     BLEAdvertising *adv = BLEDevice::getAdvertising();
     adv->addServiceUUID(BLE_SERVICE_UUID);
+    BLEAdvertisementData scanResponseData;
+    scanResponseData.setName(bleDeviceName);
+    adv->setScanResponseData(scanResponseData);
     adv->setScanResponse(true);
     adv->start();
 

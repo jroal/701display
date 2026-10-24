@@ -38,4 +38,5 @@ void ble_telemetry_pack(const BleSnapshot &s, uint8_t out[BLE_PACKET_SIZE]);
 #ifndef PC_SIMULATOR
 // Starts the BLE server and a task that notifies subscribers ~5 times per second.
 void ble_telemetry_begin(BleSnapshotFn snapshot, BleCommandFn onCommand);
+const char *ble_telemetry_device_name();
 #endif

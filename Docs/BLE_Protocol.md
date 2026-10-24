@@ -1,6 +1,6 @@
 # BLE Protocol (ESP32 display ⇄ Mobile_701 app)
 
-The ESP32 runs a BLE GATT server (device name `Husky701`, advertises the service UUID). The Android app scans for the service, connects, subscribes to telemetry notifications (~5 Hz) and can send commands.
+The ESP32 runs a BLE GATT server with an advertised device name in the form `Husky701-XXXXXX`, where the six-hex-digit suffix is derived from the chip's eFuse MAC address. It advertises the service UUID. The Android app scans for the service, lists nearby displays by name and address, connects to the selected display, subscribes to telemetry notifications (~5 Hz), and can send commands.
 
 | Item | UUID | Properties |
 |------|------|------------|

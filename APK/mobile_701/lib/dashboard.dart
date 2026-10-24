@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'ble_client.dart';
+
+const _keepOnKey = 'keep_display_on';
 
 // Palette and layout mirror UI_Layout_Init() in the ESP32 firmware (800x480).
 const _bg = Color(0xFF101820);
@@ -31,13 +35,126 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _now = DateTime.now()));
+    _clock = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() => _now = DateTime.now()),
+    );
+    _loadSettings();
   }
 
   @override
   void dispose() {
     _clock.cancel();
+    _setWakelock(false);
     super.dispose();
+  }
+
+  bool _keepOn = false;
+
+  Future<void> _setWakelock(bool on) async {
+    try {
+      await (on ? WakelockPlus.enable() : WakelockPlus.disable());
+    } catch (_) {}
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final v = prefs.getBool(_keepOnKey) ?? false;
+      if (!mounted) return;
+      setState(() => _keepOn = v);
+      _setWakelock(v);
+    } catch (_) {}
+  }
+
+  Future<void> _setKeepOn(bool v) async {
+    setState(() => _keepOn = v);
+    _setWakelock(v);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keepOnKey, v);
+    } catch (_) {}
+  }
+
+  List<Widget> _deviceTiles() {
+    final ble = widget.ble;
+    final devices = ble.nearby.values.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    final selectedIsNearby = devices.any(
+      (device) => device.selectionId == ble.selectedId,
+    );
+    Widget tile(String? id, String title, String? subtitle) => ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      trailing: ble.selectedId == id
+          ? const Icon(Icons.check_circle, color: _green)
+          : null,
+      onTap: () => ble.selectDevice(id),
+    );
+    return [
+      tile(null, 'Any (first one found)', null),
+      for (final device in devices)
+        tile(
+          device.selectionId,
+          device.name,
+          '${device.address}  |  ${device.rssi} dBm'
+          '${ble.connected && ble.connectedId == device.selectionId ? '  |  connected' : ''}',
+        ),
+      if (ble.selectedId != null && !selectedIsNearby)
+        tile(
+          ble.selectedId,
+          ble.selectedId!.startsWith('Husky701-')
+              ? ble.selectedId!
+              : 'Saved display',
+          'Not in range',
+        ),
+    ];
+  }
+
+  void _openSettings() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: const Text('Settings'),
+          content: SizedBox(
+            width: 360,
+            child: SingleChildScrollView(
+              child: ListenableBuilder(
+                listenable: widget.ble,
+                builder: (_, _) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Keep display ON while using'),
+                      value: _keepOn,
+                      onChanged: (v) {
+                        _setKeepOn(v ?? false);
+                        setDialog(() {});
+                      },
+                    ),
+                    const Divider(),
+                    const Text('701 display to connect to'),
+                    ..._deviceTiles(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   static String _two(int v) => v.toString().padLeft(2, '0');
@@ -50,25 +167,44 @@ class _DashboardState extends State<Dashboard> {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Center(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: _w,
-              height: _h,
-              child: ListenableBuilder(
-                listenable: widget.ble,
-                builder: (context, _) => _canvas(widget.ble),
+        child: Stack(
+          children: [
+            Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: _w,
+                  height: _h,
+                  child: ListenableBuilder(
+                    listenable: widget.ble,
+                    builder: (context, _) => _canvas(widget.ble),
+                  ),
+                ),
               ),
             ),
-          ),
+            Positioned(
+              right: 0,
+              top: 0,
+              child: IconButton(
+                tooltip: 'Settings',
+                iconSize: 20,
+                color: Colors.white54,
+                icon: const Icon(Icons.settings),
+                onPressed: _openSettings,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _label(String text, double size, Color color,
-      {TextAlign align = TextAlign.center}) {
+  Widget _label(
+    String text,
+    double size,
+    Color color, {
+    TextAlign align = TextAlign.center,
+  }) {
     return Text(
       text,
       textAlign: align,
@@ -103,9 +239,13 @@ class _DashboardState extends State<Dashboard> {
     final fillWidth = (rpmClamped * 620 / _rpmMaxScale).clamp(1.0, 620.0);
     final rpmColor = t.rpm < _rpmPeak
         ? const Color(0xFF00DC00)
-        : (t.rpm < _rpmRedline ? const Color(0xFFF0F000) : const Color(0xFFFF0000));
+        : (t.rpm < _rpmRedline
+              ? const Color(0xFFF0F000)
+              : const Color(0xFFFF0000));
 
-    final absText = t.absMode == 2 ? 'ABS: OFF' : (t.absMode == 1 ? 'ABS: OFF-Road' : 'ABS: ON');
+    final absText = t.absMode == 2
+        ? 'ABS: OFF'
+        : (t.absMode == 1 ? 'ABS: OFF-Road' : 'ABS: ON');
     final String standText;
     final Color standColor;
     switch (t.sideStand) {
@@ -125,58 +265,111 @@ class _DashboardState extends State<Dashboard> {
         // Fuel gauge (top left)
         _centered(-220, -175, 300, 38, _fuelBar(t.fuelPercent)),
         _centered(-220, -135, 300, 30, _fuelMarkers()),
-        _centered(240, -175, 260, 40,
-            _label('FUEL: ${t.fuelGallons.toStringAsFixed(2)} gal', 32, _text)),
+        _centered(
+          240,
+          -175,
+          260,
+          40,
+          _label('FUEL: ${t.fuelGallons.toStringAsFixed(2)} gal', 32, _text),
+        ),
 
         // Reset button
         _centered(30, -175, 180, 44, _resetButton(live)),
 
         // Temp / gear
-        _centered(-200, -65, 400, 56,
-            _label('TEMP: ${t.tempFahrenheit.toStringAsFixed(0)} F', 48, _gold)),
-        _centered(200, -65, 400, 56,
-            _label(t.gear == 0 ? 'GEAR: N' : 'GEAR: ${t.gear}', 48, _gold)),
+        _centered(
+          -200,
+          -65,
+          400,
+          56,
+          _label('TEMP: ${t.tempFahrenheit.toStringAsFixed(0)} F', 48, _gold),
+        ),
+        _centered(
+          200,
+          -65,
+          400,
+          56,
+          _label(t.gear == 0 ? 'GEAR: N' : 'GEAR: ${t.gear}', 48, _gold),
+        ),
 
         // RPM bar
-        _centered(0, 25, 620, 34, Container(
-          color: const Color.fromARGB(255, 35, 35, 35),
-          alignment: Alignment.centerLeft,
-          child: Container(width: fillWidth, height: 34, color: rpmColor),
-        )),
+        _centered(
+          0,
+          25,
+          620,
+          34,
+          Container(
+            color: const Color.fromARGB(255, 35, 35, 35),
+            alignment: Alignment.centerLeft,
+            child: Container(width: fillWidth, height: 34, color: rpmColor),
+          ),
+        ),
         _centered(0, 65, 300, 30, _label('${t.rpm} RPM', 24, _cyan)),
 
         // Economy / range
-        _centered(-200, 125, 400, 56, _label('ECON: ${t.mpg.toStringAsFixed(1)}', 48, _gold)),
-        _centered(200, 125, 400, 56,
-            _label(t.mpg > 0 ? 'RANGE: ${t.rangeMiles.toStringAsFixed(0)} mi' : 'RANGE: -- mi', 48, _gold)),
+        _centered(
+          -200,
+          125,
+          400,
+          56,
+          _label('ECON: ${t.mpg.toStringAsFixed(1)}', 48, _gold),
+        ),
+        _centered(
+          200,
+          125,
+          400,
+          56,
+          _label(
+            t.mpg > 0
+                ? 'RANGE: ${t.rangeMiles.toStringAsFixed(0)} mi'
+                : 'RANGE: -- mi',
+            48,
+            _gold,
+          ),
+        ),
 
         // Status row
         Positioned(
-          left: 20, bottom: 55, width: 240,
+          left: 20,
+          bottom: 55,
+          width: 240,
           child: _label(standText, 24, standColor, align: TextAlign.left),
         ),
         Positioned(
-          left: 20, bottom: 15, width: 240,
+          left: 20,
+          bottom: 15,
+          width: 240,
           child: _label(absText, 24, _cyan, align: TextAlign.left),
         ),
         Positioned(
-          left: (_w - 320) / 2, bottom: 15, width: 320,
+          left: (_w - 320) / 2,
+          bottom: 15,
+          width: 320,
           child: _label(_clockText, 24, _cyan),
         ),
         Positioned(
-          right: 20, bottom: 15, width: 80,
-          child: _label('CAN', 24, live && t.canActive ? _green : _yellow, align: TextAlign.right),
+          right: 20,
+          bottom: 15,
+          width: 80,
+          child: _label(
+            'CAN',
+            24,
+            live && t.canActive ? _green : _yellow,
+            align: TextAlign.right,
+          ),
         ),
 
         // BLE link state (not on the ESP32 screen; kept small in the corner)
         Positioned(
-          right: 8, top: 6,
+          left: 8,
+          top: 6,
           child: _label(
-              ble.status == BleStatus.scanning && ble.scanInfo.isNotEmpty
-                  ? '${_statusText(ble.status)} (${ble.scanInfo})'
-                  : _statusText(ble.status),
-              14,
-              live ? _green : _yellow),
+            ble.status == BleStatus.scanning && ble.scanInfo.isNotEmpty
+                ? '${_statusText(ble.status)} (${ble.scanInfo})'
+                : _statusText(ble.status),
+            14,
+            live ? _green : _yellow,
+          ),
         ),
       ],
     );
@@ -198,7 +391,10 @@ class _DashboardState extends State<Dashboard> {
               widthFactor: percent.clamp(0, 100) / 100.0,
               heightFactor: 1,
               child: Container(
-                decoration: BoxDecoration(color: _cyan, borderRadius: BorderRadius.circular(1)),
+                decoration: BoxDecoration(
+                  color: _cyan,
+                  borderRadius: BorderRadius.circular(1),
+                ),
               ),
             ),
           ),
@@ -229,11 +425,11 @@ class _DashboardState extends State<Dashboard> {
   }
 
   static String _statusText(BleStatus s) => switch (s) {
-        BleStatus.idle => 'BLE idle',
-        BleStatus.needPermission => 'BLE: permission needed',
-        BleStatus.bluetoothOff => 'BLE: Bluetooth off',
-        BleStatus.scanning => 'BLE: searching...',
-        BleStatus.connecting => 'BLE: connecting...',
-        BleStatus.connected => 'BLE: connected',
-      };
+    BleStatus.idle => 'BLE idle',
+    BleStatus.needPermission => 'BLE: permission needed',
+    BleStatus.bluetoothOff => 'BLE: Bluetooth off',
+    BleStatus.scanning => 'BLE: searching...',
+    BleStatus.connecting => 'BLE: connecting...',
+    BleStatus.connected => 'BLE: connected',
+  };
 }
