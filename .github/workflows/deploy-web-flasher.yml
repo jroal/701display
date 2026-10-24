@@ -28,12 +28,12 @@ jobs:
 
       - name: Build Firmware
         run: |
-          pio run -e esp32s3
+          pio run -e waveshare_esp32s3_43b
 
       - name: Merge Binaries
         run: |
-          # Merge bootloader, partitions, and app binary into one file starting at offset 0
-          esptool.py --chip esp32s3 merge_bin -o firmware_merged.bin 0x0000 .pio/build/esp32s3/bootloader.bin 0x8000 .pio/build/esp32s3/partitions.bin 0x10000 .pio/build/esp32s3/firmware.bin
+          # Merge bootloader, partitions, and main app binary into one flash file starting at 0x0
+          esptool.py --chip esp32s3 merge_bin -o firmware_merged.bin 0x0000 .pio/build/waveshare_esp32s3_43b/bootloader.bin 0x8000 .pio/build/waveshare_esp32s3_43b/partitions.bin 0x10000 .pio/build/waveshare_esp32s3_43b/firmware.bin
 
       - name: Generate manifest.json dynamically
         run: |
