@@ -3,6 +3,7 @@ name: Build & Deploy ESP Web Flasher
 on:
   release:
     types: [published] # Triggers whenever you create a new GitHub Release
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 permissions:
   contents: read
