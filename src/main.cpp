@@ -95,6 +95,16 @@ static constexpr uint32_t SIDE_STAND_CAN_ID = 0x540;
 static constexpr uint8_t SIDE_STAND_BYTE_INDEX = 4;
 static constexpr uint8_t SIDE_STAND_BIT_MASK = 0x01;
 static constexpr bool SIDE_STAND_BIT_SET_MEANS_UP = true;
+// ABS wheel speed frame, 100 Hz. Bytes 0-1 (big endian) = front wheel, bytes 2-3 = rear wheel.
+// Front scale was fitted against OBD PID 0x0D across the logs: ~17.77 counts per km/h.
+// Distance is integrated from the front wheel so rear wheel spin does not inflate it.
+// Tune FRONT_WHEEL_COUNTS_PER_KMH against a measured distance if needed.
+static constexpr uint32_t WHEEL_SPEED_CAN_ID = 0x12B;
+#ifndef FRONT_WHEEL_COUNTS_PER_KMH
+#define FRONT_WHEEL_COUNTS_PER_KMH 17.77f
+#endif
+static constexpr unsigned long WHEEL_SPEED_STALE_MS = 500;
+static constexpr unsigned long WHEEL_SPEED_MAX_GAP_MS = 200;
 const uint16_t ENGINE_RUN_RPM_THRESHOLD = 500;      // RPM above which the engine is considered running
 #ifndef PC_SIMULATOR
 static constexpr gpio_num_t CAN_TX_PIN = GPIO_NUM_15;
@@ -804,7 +814,8 @@ static bool can_init() {
     twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_500KBITS();
     // Dual hardware filter so the ISR only fires for the few IDs we use (bus traffic
     // while running otherwise floods core 0 with interrupts).
-    // Filter 1: 0x129/0x12A/0x540 (don't-care bits widen it to 64 IDs); filter 2: 0x7E8-0x7EF.
+    // Filter 1: 0x129/0x12A/0x540 (don't-care bits widen it to 64 IDs, which also admits
+    // the 0x12B wheel speed frame); filter 2: 0x7E8-0x7EF.
     const uint32_t ids1 = 0x12A, dc1 = 0x003 | (0x129 ^ 0x12A) | (0x12A ^ 0x540);
     const uint32_t ids2 = 0x7E8, dc2 = 0x007;
     twai_filter_config_t filterConfig = {};
@@ -885,6 +896,8 @@ void CANProcessingLoop(void * pvParameters) {
     bool absMoved = false;
     uint8_t absLastSpeed = 0;
     unsigned long absHoldStart = 0;
+    unsigned long lastWheelFrameMs = 0;
+    bool wheelSpeedSeen = false;
 #ifdef ABS_SCAN
     int scanIdx = -1;
     int scanTxFail = 0;
@@ -1015,6 +1028,16 @@ void CANProcessingLoop(void * pvParameters) {
                     liveData.absModeStatus = 2;
                 }
             }
+            else if (rx_msg.identifier == WHEEL_SPEED_CAN_ID && rx_msg.data_length_code >= 2) {
+                unsigned long now = millis();
+                uint16_t rawFront = (static_cast<uint16_t>(rx_msg.data[0]) << 8) | rx_msg.data[1];
+                float frontKmh = rawFront / FRONT_WHEEL_COUNTS_PER_KMH;
+                if (wheelSpeedSeen && now - lastWheelFrameMs <= WHEEL_SPEED_MAX_GAP_MS) {
+                    liveData.distanceTraveledKm += frontKmh * (now - lastWheelFrameMs) / 3600000.0f;
+                }
+                wheelSpeedSeen = true;
+                lastWheelFrameMs = now;
+            }
             else if (rx_msg.identifier == SIDE_STAND_CAN_ID &&
                      rx_msg.data_length_code > SIDE_STAND_BYTE_INDEX) {
                 bool bitSet = (rx_msg.data[SIDE_STAND_BYTE_INDEX] & SIDE_STAND_BIT_MASK) != 0;
@@ -1083,7 +1106,11 @@ void CANProcessingLoop(void * pvParameters) {
                     float deltaTimeHours = (currentTime - lastTimeCheck) / 3600000.0;
                     lastTimeCheck = currentTime;
 
-                    if (currentSpeedKmh > 0) {
+                    // Fallback only: the OBD speed is integer km/h at ~1.5 Hz, much coarser than
+                    // the 100 Hz front wheel speed.
+                    bool wheelSpeedFresh = wheelSpeedSeen &&
+                                           currentTime - lastWheelFrameMs <= WHEEL_SPEED_STALE_MS;
+                    if (currentSpeedKmh > 0 && !wheelSpeedFresh) {
                         liveData.distanceTraveledKm += (float)currentSpeedKmh * deltaTimeHours;
                     }
 
