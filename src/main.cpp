@@ -1706,16 +1706,21 @@ void setup() {
     delay(1000);
 
     dataMutex = xSemaphoreCreateMutex();
+#ifndef HEADLESS_BUILD
     touchMutex = xSemaphoreCreateMutex();
     sharedI2cMutex = xSemaphoreCreateMutex();
-    // Start BLE before the display grabs its large buffers; Bluedroid needs internal RAM.
+#endif
+    // BLE needs internal RAM, so initialize it before the display in the display build.
     Serial.printf("BLE: free internal heap before init %u\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     ble_telemetry_begin(ble_get_snapshot, ble_on_command);
     Serial.printf("BLE: advertising as %s, free internal heap %u\n", ble_telemetry_device_name(), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+#ifndef HEADLESS_BUILD
     errorLogQueue = xQueueCreate(ERROR_LOG_QUEUE_LENGTH, sizeof(ErrorLogRecord));
+#endif
 #ifndef DISABLE_SD_LOGGING
     canLogQueue = xQueueCreate(CAN_LOG_QUEUE_LENGTH, sizeof(CanLogRecord));
 #endif
+#ifndef HEADLESS_BUILD
     if (sharedI2cMutex == NULL) {
         log_error("I2C: failed to create shared bus mutex");
     }
@@ -1756,6 +1761,9 @@ void setup() {
     lv_display_enable_invalidation(hardwareDisplay, true);
     lv_obj_invalidate(lv_screen_active());
     log_error("BOOT: UI ready");
+#else
+    log_error("BOOT: headless setup");
+#endif
 
     nvStorage.begin("bike-fuel", false);
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
@@ -1767,12 +1775,14 @@ void setup() {
     }
     nvStorage.end();
 
+#ifndef HEADLESS_BUILD
     BaseType_t uiTaskResult = xTaskCreatePinnedToCore(UIProcessingLoop, "UI_Core1", 8192, NULL, 1, &UITaskHandle, 1);
     if (uiTaskResult != pdPASS) {
         log_error("BOOT: UI task creation failed");
     }
 
     xTaskCreatePinnedToCore(TouchProcessingLoop, "TouchTask", 3072, NULL, 1, &TouchTaskHandle, 0);
+#endif
     BaseType_t canTaskResult = xTaskCreatePinnedToCore(
         CANProcessingLoop, "CANTask", 6144, NULL, 1, &CANTaskHandle, 0);
     if (canTaskResult != pdPASS) {

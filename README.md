@@ -20,6 +20,13 @@ I used 5-pin ebike connectors at the display end of the wiring harness so I coul
 
 You can run the ESP32 installer here: [https://jroal.github.io/701display/installer.html](https://jroal.github.io/701display/installer.html) 
 
+### Firmware builds
+
+- `waveshare_esp32s3_43b` builds the existing display hardware.
+- `waveshare_esp32s3_rs485_can` builds the headless [Waveshare ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm?sku=32154) board. It keeps CAN telemetry, BLE, fuel estimation, and flash persistence, but does not initialize the display, touch controller, I2C RTC, or SD logging. PlatformIO auto-detects its serial port.
+
+In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build the headless variant, or **Upload Headless Hardware** to flash it.
+
 ## Android Display Application
 
 I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo.
