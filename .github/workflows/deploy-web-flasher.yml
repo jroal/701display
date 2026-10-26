@@ -31,35 +31,57 @@ jobs:
 
       - name: Build Firmware
         run: |
-          pio run -e waveshare_esp32s3_43b
+          pio run \
+            -e waveshare_esp32s3_43b \
+            -e waveshare_esp32s3_rs485_can
 
-      - name: Merge Binaries
+      - name: Merge Firmware Images
         run: |
-          # Merge bootloader, partitions, and main app binary into one flash file starting at 0x0
-          esptool.py --chip esp32s3 merge_bin -o firmware_merged.bin 0x0000 .pio/build/waveshare_esp32s3_43b/bootloader.bin 0x8000 .pio/build/waveshare_esp32s3_43b/partitions.bin 0x10000 .pio/build/waveshare_esp32s3_43b/firmware.bin
+          mkdir -p web-flasher
+          for env in waveshare_esp32s3_43b waveshare_esp32s3_rs485_can; do
+            esptool.py --chip esp32s3 merge_bin \
+              -o "web-flasher/${env}_merged.bin" \
+              0x0000 ".pio/build/${env}/bootloader.bin" \
+              0x8000 ".pio/build/${env}/partitions.bin" \
+              0x10000 ".pio/build/${env}/firmware.bin"
+          done
+          cp installer.html web-flasher/
 
-      - name: Generate manifest.json dynamically
+      - name: Generate firmware manifests
+        env:
+          FIRMWARE_VERSION: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          cat <<EOF > manifest.json
-          {
-            "name": "Husky Display Firmware",
-            "version": "${VERSION#v}",
-            "builds": [
-              {
-                "chipFamily": "ESP32-S3",
-                "parts": [
-                  { "path": "firmware_merged.bin", "offset": 0 }
-                ]
-              }
-            ]
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          version = os.environ["FIRMWARE_VERSION"].removeprefix("v")
+          variants = {
+              "display": ("Husky Display Firmware", "waveshare_esp32s3_43b"),
+              "headless": ("Husky Headless Firmware", "waveshare_esp32s3_rs485_can"),
           }
-          EOF
+          for variant, (name, environment) in variants.items():
+              manifest = {
+                  "name": name,
+                  "version": version,
+                  "builds": [{
+                      "chipFamily": "ESP32-S3",
+                      "parts": [{
+                          "path": f"{environment}_merged.bin",
+                          "offset": 0,
+                      }],
+                  }],
+              }
+              (Path("web-flasher") / f"manifest-{variant}.json").write_text(
+                  json.dumps(manifest, indent=2) + "\n"
+              )
+          PY
 
       - name: Upload Artifacts for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # Deploys index.html, manifest.json, and firmware_merged.bin
+          path: web-flasher
 
       - name: Deploy to GitHub Pages
         id: deployment
