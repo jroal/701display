@@ -22,7 +22,7 @@ You can run the ESP32 installer here: [https://jroal.github.io/701display/instal
 
 ### Firmware builds
 
-- `waveshare_esp32s3_43b` builds the existing display hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
+- `waveshare_esp32s3_43b` builds the existing ESP32-S3 display hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
 - `waveshare_esp32s3_rs485_can` builds the headless [Waveshare ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm?sku=32154) board. It keeps CAN telemetry, BLE, fuel estimation, and flash persistence, but does not initialize the display, touch controller, I2C RTC, or SD logging. PlatformIO auto-detects its serial port.
 
 In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build the headless variant, or **Upload Headless Hardware** to flash it.
@@ -30,6 +30,8 @@ In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build t
 ## Android Display Application
 
 I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo.
+
+Google Play Store Listing: [https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display](https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display) 
 
 
 # DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
