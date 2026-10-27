@@ -3,6 +3,19 @@ import 'package:flutter/services.dart';
 
 import 'ble_client.dart';
 import 'dashboard.dart';
+import 'range_overlay.dart';
+
+/// Entry point of the floating range overlay's Flutter engine. The plugin looks
+/// it up by name in this library.
+@pragma('vm:entry-point')
+void overlayMain() {
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Material(color: Colors.transparent, child: RangeOverlayView()),
+    ),
+  );
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +23,11 @@ Future<void> main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Hide the status bar; keep the navigation bar visible while the app is in use.
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: [SystemUiOverlay.bottom],
+  );
   runApp(const Mobile701App());
 }
 

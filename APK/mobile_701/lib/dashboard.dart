@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'ble_client.dart';
+import 'range_overlay.dart';
 
 const _keepOnKey = 'keep_display_on';
 
@@ -28,9 +29,12 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   late final Timer _clock;
   DateTime _now = DateTime.now();
+  final RangeOverlay _overlay = RangeOverlay();
+  bool _overlayEnabled = false;
+  bool _inBackground = false;
 
   @override
   void initState() {
@@ -39,14 +43,61 @@ class _DashboardState extends State<Dashboard> {
       const Duration(seconds: 1),
       (_) => setState(() => _now = DateTime.now()),
     );
+    WidgetsBinding.instance.addObserver(this);
+    widget.ble.addListener(_pushOverlayUpdate);
     _loadSettings();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.ble.removeListener(_pushOverlayUpdate);
     _clock.cancel();
     _setWakelock(false);
+    unawaited(_overlay.hide());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _inBackground = true;
+      unawaited(_syncOverlay());
+    } else if (state == AppLifecycleState.resumed) {
+      _inBackground = false;
+      unawaited(_overlay.hide());
+    }
+  }
+
+  // The overlay is only shown while the app is in the background.
+  Future<void> _syncOverlay() async {
+    if (!_overlayEnabled || !_inBackground) return;
+    if (!await RangeOverlay.hasPermission()) return;
+    await _overlay.show();
+    _pushOverlayUpdate();
+  }
+
+  void _pushOverlayUpdate() {
+    if (!_overlayEnabled || !_inBackground) return;
+    final t = widget.ble.telemetry;
+    unawaited(
+      _overlay.update(
+        rangeText: t.mpg > 0
+            ? '${t.rangeMiles.toStringAsFixed(0)} mi'
+            : '-- mi',
+        live: widget.ble.connected,
+      ),
+    );
+  }
+
+  Future<void> _setOverlayEnabled(bool v) async {
+    if (v && !await RangeOverlay.ensurePermission()) {
+      v = false;
+    }
+    if (!mounted) return;
+    setState(() => _overlayEnabled = v);
+    await RangeOverlay.saveEnabled(v);
+    if (!v) await _overlay.hide();
   }
 
   bool _keepOn = false;
@@ -61,8 +112,14 @@ class _DashboardState extends State<Dashboard> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final v = prefs.getBool(_keepOnKey) ?? false;
+      final overlayOn =
+          (prefs.getBool(rangeOverlayKey) ?? false) &&
+          await RangeOverlay.hasPermission();
       if (!mounted) return;
-      setState(() => _keepOn = v);
+      setState(() {
+        _keepOn = v;
+        _overlayEnabled = overlayOn;
+      });
       _setWakelock(v);
     } catch (_) {}
   }
@@ -135,6 +192,19 @@ class _DashboardState extends State<Dashboard> {
                       value: _keepOn,
                       onChanged: (v) {
                         _setKeepOn(v ?? false);
+                        setDialog(() {});
+                      },
+                    ),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Show fuel range over other apps'),
+                      subtitle: const Text(
+                        'Floating window while this app is in the background',
+                      ),
+                      value: _overlayEnabled,
+                      onChanged: (v) async {
+                        await _setOverlayEnabled(v ?? false);
                         setDialog(() {});
                       },
                     ),
