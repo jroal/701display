@@ -40,17 +40,30 @@ October 24, 2026: Added setting features. Created setting to keep display ON whi
 # DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
 
 IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
+
 1. Provided "As-Is" Without Warranty
+
 The Husky Display project—including all hardware schematics, firmware binaries, source code, Android applications, and documentation—is provided strictly on an "AS IS" and "AS AVAILABLE" basis, without warranties or conditions of any kind, either express or implied. This includes, but is not limited to, implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement.
+
 2. Informational Use Only & Primary Instrumentation
-Not an OEM Replacement: This system is designed solely as an experimental, secondary telemetry aid and virtual fuel computer. It does NOT replace your motorcycle’s original factory instrumentation, speedometer, low-fuel warning light, or primary diagnostic displays.
-Telemetry Accuracy: All calculated metrics—including but not limited to vehicle speed, engine RPM, remaining fuel volume, fuel consumption rates, estimated range, and gear selection—are approximations derived from empirical data and CAN bus telemetry. Do not rely on this product for critical navigation, speed limit compliance, or fuel management. Always monitor your motorcycle’s factory dash and physical fuel level.
+
+- Not an OEM Replacement: This system is designed solely as an experimental, secondary telemetry aid and virtual fuel computer. It does NOT replace your motorcycle’s original factory instrumentation, speedometer, low-fuel warning light, or primary diagnostic displays.
+
+- Telemetry Accuracy: All calculated metrics—including but not limited to vehicle speed, engine RPM, remaining fuel volume, fuel consumption rates, estimated range, and gear selection—are approximations derived from empirical data and CAN bus telemetry. Do not rely on this product for critical navigation, speed limit compliance, or fuel management. Always monitor your motorcycle’s factory dash and physical fuel level.
+
 3. Rider Responsibility & Traffic Safety
-Safe Operation: The operator of the motorcycle assumes sole responsibility for safe riding, attention to road conditions, and adherence to all local traffic laws.
-Distraction Hazard: Interacting with, configuring, or looking at display screens, phones, or handlebar mounts while riding can cause severe distraction, accidents, bodily injury, or death. Never adjust settings or attempt to operate the application while the motorcycle is in motion.
+
+- Safe Operation: The operator of the motorcycle assumes sole responsibility for safe riding, attention to road conditions, and adherence to all local traffic laws.
+
+- Distraction Hazard: Interacting with, configuring, or looking at display screens, phones, or handlebar mounts while riding can cause severe distraction, accidents, bodily injury, or death. Never adjust settings or attempt to operate the application while the motorcycle is in motion.
+
 4. Vehicle Electrical & Engine Interfacing
-User Assumption of Risk: Connecting third-party devices or custom T-harnesses to your motorcycle's diagnostic (OBD2/Euro 5) CAN bus carries inherent risks, including potential electrical short circuits, battery drain, ECU communication faults, or voiding of vehicle manufacturer warranties.
-No Liability for Vehicle Damage: The developers, contributors, and copyright holders of this project shall not be held liable for any damage to your motorcycle, electronic control units (ECU), electrical harness, or connected peripherals resulting from the installation or use of this hardware or software.
+
+- User Assumption of Risk: Connecting third-party devices or custom T-harnesses to your motorcycle's diagnostic (OBD2/Euro 5) CAN bus carries inherent risks, including potential electrical short circuits, battery drain, ECU communication faults, or voiding of vehicle manufacturer warranties.
+
+- No Liability for Vehicle Damage: The developers, contributors, and copyright holders of this project shall not be held liable for any damage to your motorcycle, electronic control units (ECU), electrical harness, or connected peripherals resulting from the installation or use of this hardware or software.
+
 5. Limitation of Liability
+
 To the maximum extent permitted by applicable law, in no event shall the authors, developers, or project contributors be liable for any direct, indirect, incidental, special, exemplary, punitive, or consequential damages (including, but not limited to, loss of use, personal injury, wrongful death, property damage, vehicle repair costs, or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this product, even if advised of the possibility of such damage.
 
