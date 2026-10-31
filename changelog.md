@@ -6,4 +6,6 @@ This change log highlights some of the more significant changes as the project e
 
 - October 24, 2026: Added setting features. Created setting to keep display ON while the app is open. Added setting to select which BLE server to connect to. This handles the situation where 2 or more BLE servers are within range. By default it looks for any available. Then it lists the servers found so the user can select which one they connect to.
 
-- October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed. 
+- October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed.
+
+- October 31, 2026: Installed, flashed, and tested the headless version on another motorcycle. The web installer did not work (I will need to fix that) but everything else did work as expected. We did not yet do an extended road test nor did we test app features yet. 
