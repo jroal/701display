@@ -140,7 +140,9 @@ volatile BikeMetrics liveData;
 static constexpr uint32_t OFFROAD_ABS_CAN_ID = 0x300;
 static constexpr uint8_t OFFROAD_ABS_PAYLOAD_BYTE0 = 0x0F;
 static constexpr unsigned long OFFROAD_ABS_TX_PERIOD_MS = 100;
-static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 1000;     // listen for other modules first (Veridian starts ~50 ms after the first 0x12A)
+// The Veridian sends every 100 ms and is already transmitting before our CAN driver starts,
+// so 300 ms (3 periods) is enough to see it.
+static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 300;
 static constexpr unsigned long OFFROAD_ABS_RETRY_MS = 2000;
 
 #ifndef PC_SIMULATOR
@@ -1992,7 +1994,8 @@ static void ble_on_command(uint8_t command) {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    // Kept short: the bike may only honour the off-road request shortly after power-up.
+    delay(100);
 
     dataMutex = xSemaphoreCreateMutex();
     {
