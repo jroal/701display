@@ -890,8 +890,11 @@ static bool can_init(bool acceptAll = false) {
     // the 0x12B wheel speed frame); filter 2: 0x7E8-0x7EF.
     twai_filter_config_t filterConfig = {};
     filterConfig.single_filter = false;
-    if (acceptAll) {
-        filterConfig.acceptance_code = 0;
+    bool acceptAllFrames = acceptAll;
+#ifdef CAPTURE_ALL_CAN
+    acceptAllFrames = true;
+#endif
+    if (acceptAllFrames) {
         filterConfig.acceptance_mask = 0xFFFFFFFFu;
     } else {
         filterConfig.acceptance_code = (CAN_FILTER1_ID << 21) | (CAN_FILTER2_ID << 5);
@@ -979,6 +982,8 @@ void CANProcessingLoop(void * pvParameters) {
     bool wideFilter = false;
     unsigned long offroadStateStart = 0;
     unsigned long offroadLastTx = 0;
+    uint32_t offroadTxOk = 0;
+    uint32_t offroadTxFail = 0;
     unsigned long offroadNextTry = 0;
     bool offroadSeen12A = false;
     bool offroadBikeActive = false;
@@ -1087,10 +1092,16 @@ void CANProcessingLoop(void * pvParameters) {
         }
 #endif
 #ifndef DISABLE_SD_LOGGING
+#ifdef CAPTURE_ALL_CAN
+        if (frameReceived) {
+            queue_can_log(rx_msg);
+        }
+#else
         if (frameReceived && (!wideFilter || can_id_in_normal_filter(rx_msg.identifier) ||
                               rx_msg.identifier == OFFROAD_ABS_CAN_ID)) {
             queue_can_log(rx_msg);
         }
+#endif
 #endif
 
         if (frameReceived && !rx_msg.extd && !rx_msg.rtr) {
@@ -1309,6 +1320,8 @@ void CANProcessingLoop(void * pvParameters) {
                     if (bikeStopped) {
                         log_error("OFFROAD: sending off-road ABS request");
                         offroadState = 2;
+                        offroadTxOk = 0;
+                        offroadTxFail = 0;
                         offroadStateStart = nowMs;
                         offroadLastTx = nowMs - OFFROAD_ABS_TX_PERIOD_MS;
                     } else {
@@ -1331,7 +1344,11 @@ void CANProcessingLoop(void * pvParameters) {
                     offroadNextTry = nowMs + OFFROAD_ABS_RETRY_MS;
                     restoreNarrowFilter();
                 } else if (nowMs - offroadStateStart >= OFFROAD_ABS_TX_DURATION_MS) {
-                    log_error("OFFROAD: request sent, effective on next key cycle");
+                    char sentMsg[80];
+                    snprintf(sentMsg, sizeof(sentMsg),
+                             "OFFROAD: request sent (tx ok=%u fail=%u), effective on next key cycle",
+                             static_cast<unsigned>(offroadTxOk), static_cast<unsigned>(offroadTxFail));
+                    log_error(sentMsg);
                     offroadState = 3;
                     restoreNarrowFilter();
                 } else if (nowMs - offroadLastTx >= OFFROAD_ABS_TX_PERIOD_MS) {
@@ -1340,7 +1357,12 @@ void CANProcessingLoop(void * pvParameters) {
                     tx.identifier = OFFROAD_ABS_CAN_ID;
                     tx.data_length_code = 8;
                     tx.data[0] = OFFROAD_ABS_PAYLOAD_BYTE0;
-                    twai_transmit(&tx, 0);
+                    esp_err_t offroadTxRes = twai_transmit(&tx, 0);
+                    if (offroadTxRes == ESP_OK) ++offroadTxOk; else ++offroadTxFail;
+#if !defined(DISABLE_SD_LOGGING)
+                    tx.extd = 1; // marks TX frames in the CAN capture
+                    queue_can_log(tx);
+#endif
                 }
             }
         }
