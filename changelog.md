@@ -6,6 +6,12 @@ This change log highlights some of the more significant changes as the project e
 
 - October 24, 2026: Added setting features. Created setting to keep display ON while the app is open. Added setting to select which BLE server to connect to. This handles the situation where 2 or more BLE servers are within range. By default it looks for any available. Then it lists the servers found so the user can select which one they connect to.
 
+<<<<<<< HEAD
 - October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed. 
 
 - October 31, 2026: Added an off-road ABS switch to the ESP32 display and the Android app. The setting is stored in ESP32 NVM. The display sends the request (CAN 0x300, 0F 00.., every 100 ms for 6 s, copied from the cruise control module in the logs) only if off-road ABS is not already active and no other module is sending it. It takes effect on the next key cycle. Moved the date/time under the fuel label on the display and removed it from the Android app. Removed the nosd build; the standard build now runs with or without an SD card. It checks for the SD card at start and if none is found after a few seconds it disables the SD card data logging.
+=======
+- October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed.
+
+- October 31, 2026: Installed, flashed, and tested the headless version on another motorcycle. The web installer did not work (I will need to fix that) but everything else did work as expected. We did not yet do an extended road test nor did we test app features yet. 
+>>>>>>> 91e2377d0d627c8435609aa9dd55382c2a10bf55
