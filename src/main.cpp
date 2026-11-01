@@ -140,8 +140,8 @@ volatile BikeMetrics liveData;
 static constexpr uint32_t OFFROAD_ABS_CAN_ID = 0x300;
 static constexpr uint8_t OFFROAD_ABS_PAYLOAD_BYTE0 = 0x0F;
 static constexpr unsigned long OFFROAD_ABS_TX_PERIOD_MS = 100;
-static constexpr unsigned long OFFROAD_ABS_TX_DURATION_MS = 6000;
-static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 700;      // listen for other modules first
+static constexpr unsigned long OFFROAD_ABS_TX_DURATION_MS = 8000;  // Veridian sends ~7.2 s from key-on
+static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 1000;     // listen for other modules first (Veridian starts ~50 ms after the first 0x12A)
 static constexpr unsigned long OFFROAD_ABS_RETRY_MS = 2000;
 
 #ifndef PC_SIMULATOR
@@ -1311,9 +1311,10 @@ void CANProcessingLoop(void * pvParameters) {
                 if (!wantOffroad) {
                     offroadState = 0;
                     restoreNarrowFilter();
-                } else if (offroadOtherModule || offroadBikeActive) {
-                    log_error(offroadBikeActive ? "OFFROAD: already active, not sending"
-                                                : "OFFROAD: another module is sending, not sending");
+                } else if (offroadOtherModule) {
+                    // The bike being active already does not block sending: the Veridian resends
+                    // the request on every key cycle even when off-road is already on.
+                    log_error("OFFROAD: another module is sending, not sending");
                     offroadState = 3;
                     restoreNarrowFilter();
                 } else if (nowMs - offroadStateStart >= OFFROAD_ABS_WATCH_MS && offroadSeen12A) {
