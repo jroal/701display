@@ -91,7 +91,7 @@ On first launch, allow the Bluetooth ("Nearby devices") permission when asked. I
 2. **Key the bike ON.** The ESP32 powers up and starts reading the CAN bus. The `CAN` indicator turns green when valid bike data is arriving.
 3. **Set the clock** (display build): tap the date/time and set it (section 8.3). This is used for log file names and timestamps.
 4. **Fill the tank, then press Reset** (section 8.1). The fuel gauge is an estimate, so it must be calibrated at every fill-up.
-5. **Pair the app:** open the Android app. It scans for a display named `Husky701-XXXXXX`. If more than one is nearby, open **Settings** (gear icon) and pick yours under "701 display to connect to".
+5. **Pair the app:** open the Android app. It scans for a display named `Husky701-XXXXXX`. If more than one is nearby, open **Settings** (gear icon) and pick yours under "701 display to connect to". You should always select your specific ESP32 to connect to otherwise you risk connecting to another nearby ESP32. Start by letting it connect to any while your bike is the only one with the ESP32 on it in the area (within 200 feet or so). Then find which one it connected to and select that in the list. Once selected it will always look for only that ESP32. 
 6. Confirm the app's top-left status reads `BLE: connected`.
 
 ## 7. Display screen reference
@@ -128,14 +128,14 @@ The bike has no direct fuel-level signal on CAN, so the display **estimates** it
 - The consumed fuel and distance are saved to flash when the engine stops, so the estimate survives key-off and power loss.
 - **ECON** and **RANGE** are derived from that fuel use and distance.
 
-Refuel and press **Reset** every time; otherwise the gauge will drift. On the Android app, the Reset button works the same way (it is disabled while not connected).
+Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full. On the Android app, the Reset button works the same way (it is disabled while not connected).
 
 ### 8.2 Off-road ABS
 
 Toggle **Off-road ABS** to have the bike start in off-road ABS mode at the next key-on.
 
 1. Turn the switch **ON**. A message tells you the mode takes effect on the next key cycle.
-2. Turn the ignition **OFF**, then **ON**.
+2. Turn the ignition **OFF**, wait a few seconds, then key back **ON**.
 3. The display should show **ABS: OFF-Road**.
 4. To return to normal ABS, turn the switch **OFF** and key-cycle again.
 
@@ -143,7 +143,7 @@ How it works and safety rules:
 
 - The setting is saved on the ESP32 and is remembered.
 - At key-on the display sends the off-road request on the CAN bus. It **only transmits while the bike is stopped**.
-- It **will not transmit if another module (such as a Veridian cruise control) is already sending the request.** It listens first and stops immediately if another sender appears.
+- It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
 - It stops sending if the bike moves.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
 
@@ -176,7 +176,7 @@ Three versions are tracked so the parts work together:
 
 - **Firmware version** (for example `1.0.0`), the same number for both builds, with a build tag of `43b` or `headless`.
 - **BLE protocol version** (currently **2**), bumped whenever the Bluetooth interface changes. History is in [Docs/BLE_Protocol.md](Docs/BLE_Protocol.md).
-- **App version** (for example `1.0.4+4`).
+- **App version** (for example `1.1.0+5`).
 
 The app accepts protocol versions 1 to 2. If the firmware reports a protocol version the app does not support, update the app (or the firmware) so the versions match. Always check the **About** dialogs after updating either side.
 
@@ -200,7 +200,7 @@ The headless build has no SD logging.
 | App says searching, never connects | Bluetooth on? Nearby-devices permission granted? ESP32 powered (key ON)? Close other apps connected to the display (only one BLE client at a time). |
 | Wrong display chosen | Settings → "701 display to connect to" → pick the right `Husky701-XXXXXX`. |
 | Fuel gauge wrong | Press **Reset** only at a full tank. Re-fill and reset to recalibrate. |
-| Off-road ABS does not engage | Turn the switch on, then key off and on. The bike must be stopped. If a Veridian is already sending the request, the display deliberately does not send; enable it through the Veridian instead. |
+| Off-road ABS does not engage | Turn the switch on, then key off, wait a few seconds, and then key back on. The bike must be stopped. If a KTM ABS dongle or Veridian is already sending the request, the display deliberately does not send; enable it through the other device instead. |
 | ABS shows ON after switching ABS off with the button | Expected, see the ABS note in section 7. |
 | No SD logs | Card inserted before power-up? Reboot with the card in. Clock set? |
 | Time is wrong | Tap the date/time on the display and set it. |
