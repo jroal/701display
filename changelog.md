@@ -15,4 +15,5 @@ This change log highlights some of the more significant changes as the project e
 - October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed.
 
 - October 31, 2026: Installed, flashed, and tested the headless version on another motorcycle. The web installer did not work (I will need to fix that) but everything else did work as expected. We did not yet do an extended road test nor did we test app features yet. 
->>>>>>> 91e2377d0d627c8435609aa9dd55382c2a10bf55
+
+- November 1, 2026: Added ABS off-road mode toggle in ESP32 and Android app. This enables the special off-road mode in the ABS. Changing the selection requires a key cycle to invoke the new mode. Also found the ABS OFF mode reporting never worked so it was removed. Now ABS mode is either ON or off-road. ABS OFF can be seen in the ABS lamp on the motorcycle after prove out. Added versions to the BLE protocol and ESP32 firmware and the Android app reports this data in the "about" settings. The ESP32 display reports this data by clicking the CAN label on the display. Completed basic testing and publiched version 5 (1.1.0) to the Play Store. 
