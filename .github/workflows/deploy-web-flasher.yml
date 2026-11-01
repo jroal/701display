@@ -10,6 +10,9 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -40,12 +43,13 @@ jobs:
           mkdir -p web-flasher
           for env in waveshare_esp32s3_43b waveshare_esp32s3_rs485_can; do
             esptool.py --chip esp32s3 merge_bin \
-              -o "web-flasher/${env}_merged.bin" \
+              -o "web-flasher/${env}_merged_${BUILD_ID}.bin" \
               0x0000 ".pio/build/${env}/bootloader.bin" \
               0x8000 ".pio/build/${env}/partitions.bin" \
               0x10000 ".pio/build/${env}/firmware.bin"
           done
-          cp installer.html web-flasher/
+          sed "s/\(manifest-[a-z]*\.json\)/\1?v=${BUILD_ID}/g" installer.html > web-flasher/installer.html
+          cp web-flasher/installer.html web-flasher/index.html
 
       - name: Generate firmware manifests
         env:
@@ -56,7 +60,8 @@ jobs:
           import os
           from pathlib import Path
 
-          version = os.environ["FIRMWARE_VERSION"].removeprefix("v")
+          build_id = os.environ["BUILD_ID"]
+          version = f'{os.environ["FIRMWARE_VERSION"].removeprefix("v")}+{build_id}'
           variants = {
               "display": ("Husky Display Firmware", "waveshare_esp32s3_43b"),
               "headless": ("Husky Headless Firmware", "waveshare_esp32s3_rs485_can"),
@@ -68,7 +73,7 @@ jobs:
                   "builds": [{
                       "chipFamily": "ESP32-S3",
                       "parts": [{
-                          "path": f"{environment}_merged.bin",
+                          "path": f"{environment}_merged_{build_id}.bin",
                           "offset": 0,
                       }],
                   }],
