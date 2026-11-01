@@ -140,7 +140,6 @@ volatile BikeMetrics liveData;
 static constexpr uint32_t OFFROAD_ABS_CAN_ID = 0x300;
 static constexpr uint8_t OFFROAD_ABS_PAYLOAD_BYTE0 = 0x0F;
 static constexpr unsigned long OFFROAD_ABS_TX_PERIOD_MS = 100;
-static constexpr unsigned long OFFROAD_ABS_TX_DURATION_MS = 8000;  // Veridian sends ~7.2 s from key-on
 static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 1000;     // listen for other modules first (Veridian starts ~50 ms after the first 0x12A)
 static constexpr unsigned long OFFROAD_ABS_RETRY_MS = 2000;
 
@@ -984,6 +983,7 @@ void CANProcessingLoop(void * pvParameters) {
     unsigned long offroadLastTx = 0;
     uint32_t offroadTxOk = 0;
     uint32_t offroadTxFail = 0;
+    unsigned long offroadLastReport = 0;
     unsigned long offroadNextTry = 0;
     bool offroadSeen12A = false;
     bool offroadBikeActive = false;
@@ -1323,6 +1323,7 @@ void CANProcessingLoop(void * pvParameters) {
                         offroadState = 2;
                         offroadTxOk = 0;
                         offroadTxFail = 0;
+                        offroadLastReport = nowMs;
                         offroadStateStart = nowMs;
                         offroadLastTx = nowMs - OFFROAD_ABS_TX_PERIOD_MS;
                     } else {
@@ -1336,20 +1337,29 @@ void CANProcessingLoop(void * pvParameters) {
                     restoreNarrowFilter();
                 }
             } else if (offroadState == 2) {
+                // Keep sending (like the Veridian) until another module starts, the bike moves
+                // or the user turns the request off.
+                auto logOffroadSummary = [&](const char *reason) {
+                    twai_status_info_t st = {};
+                    twai_get_status_info(&st);
+                    char msg[128];
+                    snprintf(msg, sizeof(msg),
+                             "OFFROAD: %s (queued ok=%u fail=%u, hw tx_failed=%u tx_err=%u bus_err=%u arb_lost=%u)",
+                             reason, static_cast<unsigned>(offroadTxOk), static_cast<unsigned>(offroadTxFail),
+                             static_cast<unsigned>(st.tx_failed_count), static_cast<unsigned>(st.tx_error_counter),
+                             static_cast<unsigned>(st.bus_error_count), static_cast<unsigned>(st.arb_lost_count));
+                    log_error(msg);
+                };
                 if (offroadOtherModule) {
-                    log_error("OFFROAD: another module started sending, aborting");
+                    logOffroadSummary("another module started sending, aborting");
                     offroadState = 3;
                     restoreNarrowFilter();
-                } else if (!wantOffroad || !bikeStopped) {
+                } else if (!wantOffroad) {
+                    logOffroadSummary("request turned off, stopping");
                     offroadState = 0;
-                    offroadNextTry = nowMs + OFFROAD_ABS_RETRY_MS;
                     restoreNarrowFilter();
-                } else if (nowMs - offroadStateStart >= OFFROAD_ABS_TX_DURATION_MS) {
-                    char sentMsg[80];
-                    snprintf(sentMsg, sizeof(sentMsg),
-                             "OFFROAD: request sent (tx ok=%u fail=%u), effective on next key cycle",
-                             static_cast<unsigned>(offroadTxOk), static_cast<unsigned>(offroadTxFail));
-                    log_error(sentMsg);
+                } else if (!bikeStopped) {
+                    logOffroadSummary("bike moving, stopped sending");
                     offroadState = 3;
                     restoreNarrowFilter();
                 } else if (nowMs - offroadLastTx >= OFFROAD_ABS_TX_PERIOD_MS) {
@@ -1364,6 +1374,12 @@ void CANProcessingLoop(void * pvParameters) {
                     tx.extd = 1; // marks TX frames in the CAN capture
                     queue_can_log(tx);
 #endif
+                    // Progress line every ~2 s so the hardware error counters are visible even
+                    // if the key is turned off mid-burst.
+                    if (nowMs - offroadLastReport >= 2000) {
+                        offroadLastReport = nowMs;
+                        logOffroadSummary("sending");
+                    }
                 }
             }
         }
