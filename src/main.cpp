@@ -1124,16 +1124,8 @@ void CANProcessingLoop(void * pvParameters) {
                 }
             }
             else if (rx_msg.identifier == 0x129 && rx_msg.data_length_code >= 1) {
-                // Byte 0 bit 3 drops low for the whole OBS button hold while stopped.
-                bool held = (rx_msg.data[0] & 0x08) == 0 && absMoved && absLastSpeed == 0;
-                if (!held) {
-                    absHoldStart = 0;
-                } else if (absHoldStart == 0) {
-                    absHoldStart = millis();
-                } else if (millis() - absHoldStart >= 5000) {
-                    absDisabled = true;
-                    liveData.absModeStatus = 2;
-                }
+                // ABS OFF inference disabled: 0x129 byte0 bit3 is low whenever the bike is
+                // idle after moving, so it falsely reported ABS OFF. No reliable signal known.
             }
             else if (rx_msg.identifier == WHEEL_SPEED_CAN_ID && rx_msg.data_length_code >= 2) {
                 unsigned long now = millis();
