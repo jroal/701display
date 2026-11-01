@@ -4,6 +4,8 @@ This project uses an ESP32-S3 4.3inch Capacitive Touch LCD Development Board Typ
 
 <img width="798" height="477" alt="image" src="https://github.com/user-attachments/assets/3367fc76-76ad-4862-9556-7ac19bd87313" />
 
+See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)
+
 ## CAN Hardware
 
 I used this hardware: [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) to get started. However, longer tem this project will likely go to headless hardware and use mobile apps for the display. 
