@@ -31,6 +31,29 @@ class NearbyDevice {
   final DateTime lastSeen;
 }
 
+/// Firmware details published by the display's INFO characteristic
+/// ("fw=1.0.0;proto=2;build=43b").
+class DisplayInfo {
+  const DisplayInfo({this.firmware, this.protocol, this.build});
+
+  final String? firmware;
+  final int? protocol;
+  final String? build;
+
+  static DisplayInfo parse(String text) {
+    final fields = <String, String>{};
+    for (final part in text.split(';')) {
+      final i = part.indexOf('=');
+      if (i > 0) fields[part.substring(0, i)] = part.substring(i + 1);
+    }
+    return DisplayInfo(
+      firmware: fields['fw'],
+      protocol: int.tryParse(fields['proto'] ?? ''),
+      build: fields['build'],
+    );
+  }
+}
+
 class _ScannedDevice {
   const _ScannedDevice(this.device, this.selectionId);
   final BluetoothDevice device;
@@ -45,10 +68,19 @@ class BleClient extends ChangeNotifier {
     '7a010001-701d-4a5e-9f3b-0701d15b1e00',
   );
   static final Guid commandUuid = Guid('7a010002-701d-4a5e-9f3b-0701d15b1e00');
+  static final Guid infoUuid = Guid('7a010003-701d-4a5e-9f3b-0701d15b1e00');
   static const int cmdResetFuel = 0x01;
+  static const int cmdOffroadAbsOn = 0x02;
+  static const int cmdOffroadAbsOff = 0x03;
 
   BleStatus status = BleStatus.idle;
   Telemetry telemetry = const Telemetry();
+
+  /// Firmware details read from the display's INFO characteristic; null when not
+  /// connected. Fields are null for firmware older than protocol 2.
+  DisplayInfo? displayInfo;
+  /// Protocol version seen in the last telemetry packet.
+  int? protocolVersion;
 
   bool _running = false;
   BluetoothDevice? _device;
@@ -242,6 +274,8 @@ class BleClient extends ChangeNotifier {
       await tele.setNotifyValue(true);
       final initial = await tele.read();
       _onData(initial);
+      protocolVersion = initial.isNotEmpty ? initial[0] : null;
+      displayInfo = await _readInfo(service);
       _setStatus(BleStatus.connected);
 
       await device.connectionState.firstWhere(
@@ -251,6 +285,8 @@ class BleClient extends ChangeNotifier {
       await _valueSub?.cancel();
       _valueSub = null;
       _commandChar = null;
+      displayInfo = null;
+      protocolVersion = null;
       _device = null;
       _activeSelectionId = null;
       try {
@@ -267,11 +303,27 @@ class BleClient extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<DisplayInfo?> _readInfo(BluetoothService service) async {
+    try {
+      final c = service.characteristics.firstWhere((c) => c.uuid == infoUuid);
+      return DisplayInfo.parse(String.fromCharCodes(await c.read()));
+    } catch (_) {
+      return null; // firmware older than protocol 2
+    }
+  }
+
   /// Equivalent of pressing Reset on the ESP32 display (refills the fuel tank).
   Future<void> resetFuel() async {
     final c = _commandChar;
     if (c == null) return;
     await c.write([cmdResetFuel]);
+  }
+
+  /// Sets the persistent off-road ABS request stored on the ESP32 (effective next key cycle).
+  Future<void> setOffroadAbs(bool enabled) async {
+    final c = _commandChar;
+    if (c == null) return;
+    await c.write([enabled ? cmdOffroadAbsOn : cmdOffroadAbsOff]);
   }
 
   @override

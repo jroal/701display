@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'ble_client.dart';
 import 'range_overlay.dart';
+import 'telemetry.dart';
 
 const _keepOnKey = 'keep_display_on';
 
@@ -30,8 +32,6 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
-  late final Timer _clock;
-  DateTime _now = DateTime.now();
   final RangeOverlay _overlay = RangeOverlay();
   bool _overlayEnabled = false;
   bool _inBackground = false;
@@ -39,10 +39,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _clock = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => setState(() => _now = DateTime.now()),
-    );
     WidgetsBinding.instance.addObserver(this);
     widget.ble.addListener(_pushOverlayUpdate);
     _loadSettings();
@@ -52,7 +48,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.ble.removeListener(_pushOverlayUpdate);
-    _clock.cancel();
     _setWakelock(false);
     unawaited(_overlay.hide());
     super.dispose();
@@ -170,6 +165,44 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     ];
   }
 
+  Future<void> _openAbout() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('About'),
+        content: ListenableBuilder(
+          listenable: widget.ble,
+          builder: (_, _) {
+            final d = widget.ble.displayInfo;
+            final connected = widget.ble.connected;
+            String row(String k, String? v) => '$k: ${v ?? 'unknown'}';
+            final lines = <String>[
+              row('App version', '${info.version}+${info.buildNumber}'),
+              row('App BLE protocol', '${Telemetry.minProtocolVersion}-${Telemetry.protocolVersion}'),
+              if (!connected)
+                'Connect to a display to see its versions.'
+              else ...[
+                row('Display firmware', d?.firmware ?? 'older than 1.0.0'),
+                row('Display build', d?.build),
+                row('Display BLE protocol',
+                    (d?.protocol ?? widget.ble.protocolVersion)?.toString()),
+              ],
+            ];
+            return Text(lines.join('\n'));
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openSettings() {
     showDialog<void>(
       context: context,
@@ -209,6 +242,13 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       },
                     ),
                     const Divider(),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text('About'),
+                      onTap: _openAbout,
+                    ),
+                    const Divider(),
                     const Text('701 display to connect to'),
                     ..._deviceTiles(),
                   ],
@@ -226,11 +266,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
       ),
     );
   }
-
-  static String _two(int v) => v.toString().padLeft(2, '0');
-
-  String get _clockText =>
-      '${_now.year}-${_two(_now.month)}-${_two(_now.day)}  ${_two(_now.hour)}:${_two(_now.minute)}:${_two(_now.second)}';
 
   @override
   Widget build(BuildContext context) {
@@ -412,10 +447,22 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           child: _label(absText, 24, _cyan, align: TextAlign.left),
         ),
         Positioned(
-          left: (_w - 320) / 2,
+          left: _w / 2 - 50 - 90,
           bottom: 15,
-          width: 320,
-          child: _label(_clockText, 24, _cyan),
+          width: 180,
+          child: _label('Off-road ABS', 24, _cyan),
+        ),
+        Positioned(
+          left: _w / 2 + 100 - 35,
+          bottom: 12,
+          width: 70,
+          height: 36,
+          child: FittedBox(
+            child: Switch(
+              value: t.offroadAbsRequested,
+              onChanged: live ? widget.ble.setOffroadAbs : null,
+            ),
+          ),
         ),
         Positioned(
           right: 20,

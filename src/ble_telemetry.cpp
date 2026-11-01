@@ -13,7 +13,8 @@ void ble_telemetry_pack(const BleSnapshot &s, uint8_t out[BLE_PACKET_SIZE]) {
     put16(1, s.rpm);
     put16(3, (uint16_t)s.coolantTempC);
     out[5] = s.gear;
-    out[6] = (s.canActive ? 0x01 : 0x00) | ((s.absMode & 0x03) << 1) | ((s.sideStand & 0x03) << 3);
+    out[6] = (s.canActive ? 0x01 : 0x00) | ((s.absMode & 0x03) << 1) | ((s.sideStand & 0x03) << 3) |
+             (s.offroadAbsRequested ? 0x20 : 0x00);
     put16(7, fuelCl > 0xFFFF ? 0xFFFF : fuelCl);
     out[9] = s.fuelPercent > 100 ? 100 : s.fuelPercent;
     put16(10, mpgX10 > 0xFFFF ? 0xFFFF : mpgX10);
@@ -27,6 +28,9 @@ void ble_telemetry_pack(const BleSnapshot &s, uint8_t out[BLE_PACKET_SIZE]) {
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <stdio.h>
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
 
 static BLEServer *bleServer = nullptr;
 static BLECharacteristic *telemetryChar = nullptr;
@@ -88,6 +92,10 @@ void ble_telemetry_begin(BleSnapshotFn snapshot, BleCommandFn onCommand) {
     BLECharacteristic *commandChar = service->createCharacteristic(
         BLE_COMMAND_CHAR_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
     commandChar->setCallbacks(new CommandCallbacks());
+
+    BLECharacteristic *infoChar =
+        service->createCharacteristic(BLE_INFO_CHAR_UUID, BLECharacteristic::PROPERTY_READ);
+    infoChar->setValue("fw=" FIRMWARE_VERSION ";proto=" STR(BLE_PROTOCOL_VERSION) ";build=" FIRMWARE_VARIANT);
 
     service->start();
 

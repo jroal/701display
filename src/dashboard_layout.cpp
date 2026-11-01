@@ -175,10 +175,19 @@ void create_dashboard() {
     lv_obj_align(rpm_value, LV_ALIGN_CENTER, 0, 65);
     lv_obj_align(simulator_mpg, LV_ALIGN_CENTER, -200, 125);
     lv_obj_align(simulator_range, LV_ALIGN_CENTER, 200, 125);
-    lv_obj_align(clock_label, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_align(clock_label, LV_ALIGN_CENTER, 240, -135);
     lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
     lv_obj_align(side_stand_label, LV_ALIGN_BOTTOM_LEFT, 20, -55);
     lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
+
+    lv_obj_t *offroad_label = lv_label_create(screen);
+    lv_label_set_text(offroad_label, "Off-road ABS");
+    lv_obj_add_style(offroad_label, &style_sub_header, 0);
+    lv_obj_align(offroad_label, LV_ALIGN_BOTTOM_MID, -50, -15);
+
+    lv_obj_t *offroad_switch = lv_switch_create(screen);
+    lv_obj_set_size(offroad_switch, 70, 36);
+    lv_obj_align(offroad_switch, LV_ALIGN_BOTTOM_MID, 100, -12);
 }
 
 #endif

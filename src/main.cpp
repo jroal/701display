@@ -131,8 +131,39 @@ struct BikeMetrics {
     bool canActive = false;
     uint8_t absModeStatus = 0;
     uint8_t sideStandStatus = 0; // 0 = unknown, 1 = down, 2 = up
+    bool offroadAbsRequested = false; // User setting, persisted in NVM
 };
 volatile BikeMetrics liveData;
+
+// Off-road ABS activation: mimics the aftermarket cruise control module, which sends
+// 0x300 [0F 00 00 00 00 00 00 00] every 100 ms (see Logs). Takes effect on the next key cycle.
+static constexpr uint32_t OFFROAD_ABS_CAN_ID = 0x300;
+static constexpr uint8_t OFFROAD_ABS_PAYLOAD_BYTE0 = 0x0F;
+static constexpr unsigned long OFFROAD_ABS_TX_PERIOD_MS = 100;
+static constexpr unsigned long OFFROAD_ABS_TX_DURATION_MS = 6000;
+static constexpr unsigned long OFFROAD_ABS_WATCH_MS = 700;      // listen for other modules first
+static constexpr unsigned long OFFROAD_ABS_RETRY_MS = 2000;
+
+#ifndef PC_SIMULATOR
+static void save_offroad_abs_request(bool enabled) {
+    Preferences settings;
+    if (settings.begin("bike-settings", false)) {
+        settings.putBool("offroadAbs", enabled);
+        settings.end();
+    }
+}
+#endif
+
+// Called from the UI and BLE command handler.
+static void set_offroad_abs_request(bool enabled) {
+    if (liveData.offroadAbsRequested == enabled) {
+        return;
+    }
+    liveData.offroadAbsRequested = enabled;
+#ifndef PC_SIMULATOR
+    save_offroad_abs_request(enabled);
+#endif
+}
 
 // --- Task & Flash Memory Handlers ---
 #ifndef PC_SIMULATOR
@@ -191,6 +222,7 @@ static constexpr uint8_t PIN_SD_CS_EXPANDER = 4;
 static constexpr const char *ERROR_LOG_PATH = "/error.txt";
 static constexpr UBaseType_t ERROR_LOG_QUEUE_LENGTH = 32;
 static constexpr unsigned long SD_LOG_RETRY_INTERVAL_MS = 5000;
+static constexpr unsigned long SD_DETECT_TIMEOUT_MS = 8000;
 static constexpr UBaseType_t CAN_LOG_QUEUE_LENGTH = 2048;
 static constexpr unsigned long CAN_LOG_FLUSH_INTERVAL_MS = 30000;
 static constexpr size_t CAN_LOG_PATH_BUFFER_SIZE = 48;
@@ -214,6 +246,8 @@ QueueHandle_t canLogQueue = NULL;
 File errorLogFile;
 File canLogFile;
 volatile bool sdCardMounted = false;
+// Set when no card was found within SD_DETECT_TIMEOUT_MS of boot; SD features stay off until reboot.
+volatile bool sdLoggingDisabled = false;
 volatile uint32_t errorLogDroppedMessages = 0;
 volatile uint32_t canLogDroppedFrames = 0;
 volatile bool rtcTimeValid = false;
@@ -222,7 +256,7 @@ uint32_t rtcSyncUptimeMs = 0;
 bool sdSpiStarted = false;
 
 static void log_error(const char *message) {
-    if (errorLogQueue == NULL) {
+    if (errorLogQueue == NULL || sdLoggingDisabled) {
         ++errorLogDroppedMessages;
         Serial.println(message);
         return;
@@ -593,7 +627,12 @@ static bool sd_log_init() {
     }
 
     if (!SD.begin(PIN_SD_DUMMY_CS, SPI, 20000000, "/sdcard", 5, false)) {
-        log_error("SD: mount failed; error logging unavailable");
+        // No card inserted is a normal condition: report once, keep retrying silently.
+        static bool mountFailureReported = false;
+        if (!mountFailureReported) {
+            log_error("SD: no card or mount failed; logging disabled until a card is inserted");
+            mountFailureReported = true;
+        }
         SD.end();
         return false;
     }
@@ -624,6 +663,9 @@ static bool open_error_log() {
 
 #ifndef DISABLE_SD_LOGGING
 static void queue_can_log(const twai_message_t &message) {
+    if (sdLoggingDisabled) {
+        return;
+    }
     if (canLogQueue == NULL) {
         ++canLogDroppedFrames;
         return;
@@ -721,6 +763,7 @@ void SDLoggerLoop(void *) {
     }
 
     unsigned long now = millis();
+    const unsigned long taskStartedAt = now;
     unsigned long lastMountAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
     unsigned long lastErrorOpenAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
     unsigned long lastCanOpenAttempt = now - SD_LOG_RETRY_INTERVAL_MS;
@@ -737,6 +780,24 @@ void SDLoggerLoop(void *) {
             sd_log_init();
         }
 
+        if (!sdCardMounted && now - taskStartedAt >= SD_DETECT_TIMEOUT_MS) {
+            sdLoggingDisabled = true;
+            if (canLogQueue != NULL) {
+                xQueueReset(canLogQueue);
+            }
+            if (errorLogQueue != NULL) {
+                xQueueReset(errorLogQueue);
+            }
+            Serial.println("SD: no card detected; SD logging disabled until reboot");
+            vTaskDelete(NULL);
+            return;
+        }
+
+        if (!sdCardMounted && canLogQueue != NULL) {
+            // Without a card nothing drains the queue; discard stale frames so they are not
+            // written with old timestamps if a card is inserted later.
+            xQueueReset(canLogQueue);
+        }
         if (sdCardMounted) {
             if (!errorLogFile && now - lastErrorOpenAttempt >= SD_LOG_RETRY_INTERVAL_MS) {
                 lastErrorOpenAttempt = now;
@@ -808,7 +869,18 @@ void UI_Layout_Init();
 // 📡 CORE 0: VEHICLE DATA PROCESSING & UDS DIAGNOSTIC POLLING
 // =========================================================================
 #ifndef PC_SIMULATOR
-static bool can_init() {
+static constexpr uint32_t CAN_FILTER1_ID = 0x12A;
+static constexpr uint32_t CAN_FILTER1_DC = 0x003 | (0x129 ^ 0x12A) | (0x12A ^ 0x540);
+static constexpr uint32_t CAN_FILTER2_ID = 0x7E8;
+static constexpr uint32_t CAN_FILTER2_DC = 0x007;
+
+static bool can_id_in_normal_filter(uint32_t id) {
+    return ((id ^ CAN_FILTER1_ID) & ~CAN_FILTER1_DC & 0x7FF) == 0 ||
+           ((id ^ CAN_FILTER2_ID) & ~CAN_FILTER2_DC & 0x7FF) == 0;
+}
+
+// acceptAll is only used briefly while the off-road ABS handshake needs to hear 0x300.
+static bool can_init(bool acceptAll = false) {
     twai_general_config_t generalConfig =
         TWAI_GENERAL_CONFIG_DEFAULT(CAN_TX_PIN, CAN_RX_PIN, TWAI_MODE_NORMAL);
     twai_timing_config_t timingConfig = TWAI_TIMING_CONFIG_500KBITS();
@@ -816,12 +888,15 @@ static bool can_init() {
     // while running otherwise floods core 0 with interrupts).
     // Filter 1: 0x129/0x12A/0x540 (don't-care bits widen it to 64 IDs, which also admits
     // the 0x12B wheel speed frame); filter 2: 0x7E8-0x7EF.
-    const uint32_t ids1 = 0x12A, dc1 = 0x003 | (0x129 ^ 0x12A) | (0x12A ^ 0x540);
-    const uint32_t ids2 = 0x7E8, dc2 = 0x007;
     twai_filter_config_t filterConfig = {};
     filterConfig.single_filter = false;
-    filterConfig.acceptance_code = (ids1 << 21) | (ids2 << 5);
-    filterConfig.acceptance_mask = (dc1 << 21) | (0x1Fu << 16) | (dc2 << 5) | 0x1Fu;
+    if (acceptAll) {
+        filterConfig.acceptance_code = 0;
+        filterConfig.acceptance_mask = 0xFFFFFFFFu;
+    } else {
+        filterConfig.acceptance_code = (CAN_FILTER1_ID << 21) | (CAN_FILTER2_ID << 5);
+        filterConfig.acceptance_mask = (CAN_FILTER1_DC << 21) | (0x1Fu << 16) | (CAN_FILTER2_DC << 5) | 0x1Fu;
+    }
 
     if (twai_driver_install(&generalConfig, &timingConfig, &filterConfig) != ESP_OK) {
         log_error("TWAI: driver installation failed");
@@ -898,6 +973,16 @@ void CANProcessingLoop(void * pvParameters) {
     unsigned long absHoldStart = 0;
     unsigned long lastWheelFrameMs = 0;
     bool wheelSpeedSeen = false;
+    uint16_t wheelFrontRaw = 0;
+    // Off-road ABS handshake: 0 idle, 1 watching the bus, 2 transmitting, 3 finished for this boot
+    uint8_t offroadState = 0;
+    bool wideFilter = false;
+    unsigned long offroadStateStart = 0;
+    unsigned long offroadLastTx = 0;
+    unsigned long offroadNextTry = 0;
+    bool offroadSeen12A = false;
+    bool offroadBikeActive = false;
+    bool offroadOtherModule = false;
 #ifdef ABS_SCAN
     int scanIdx = -1;
     int scanTxFail = 0;
@@ -908,6 +993,8 @@ void CANProcessingLoop(void * pvParameters) {
     while(true) {
         unsigned long currentMillis = millis();
         if (!driverStarted) {
+            wideFilter = false;
+            if (offroadState == 1 || offroadState == 2) offroadState = 0;
             if (currentMillis - lastInitAttempt >= CAN_INIT_RETRY_INTERVAL_MS) {
                 lastInitAttempt = currentMillis;
                 driverStarted = can_init();
@@ -1000,7 +1087,8 @@ void CANProcessingLoop(void * pvParameters) {
         }
 #endif
 #ifndef DISABLE_SD_LOGGING
-        if (frameReceived) {
+        if (frameReceived && (!wideFilter || can_id_in_normal_filter(rx_msg.identifier) ||
+                              rx_msg.identifier == OFFROAD_ABS_CAN_ID)) {
             queue_can_log(rx_msg);
         }
 #endif
@@ -1008,7 +1096,13 @@ void CANProcessingLoop(void * pvParameters) {
         if (frameReceived && !rx_msg.extd && !rx_msg.rtr) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
 
-            if (rx_msg.identifier == 0x12A && rx_msg.data_length_code >= 3) {
+            if (rx_msg.identifier == OFFROAD_ABS_CAN_ID) {
+                // We never see our own transmissions, so this is another module.
+                offroadOtherModule = true;
+            }
+            else if (rx_msg.identifier == 0x12A && rx_msg.data_length_code >= 3) {
+                offroadSeen12A = true;
+                offroadBikeActive = (rx_msg.data[2] & 0x01) != 0;
                 // Byte 2 bit 0 = off-road mode. ABS OFF is latched until power cycle.
                 if (absDisabled) {
                     liveData.absModeStatus = 2;
@@ -1036,6 +1130,7 @@ void CANProcessingLoop(void * pvParameters) {
                     liveData.distanceTraveledKm += frontKmh * (now - lastWheelFrameMs) / 3600000.0f;
                 }
                 wheelSpeedSeen = true;
+                wheelFrontRaw = rawFront;
                 lastWheelFrameMs = now;
             }
             else if (rx_msg.identifier == SIDE_STAND_CAN_ID &&
@@ -1172,6 +1267,82 @@ void CANProcessingLoop(void * pvParameters) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
             liveData.canActive = false;
             xSemaphoreGive(dataMutex);
+        }
+
+        if (!busOffRecoveryStarted) {
+            auto restoreNarrowFilter = [&]() {
+                twai_stop();
+                twai_driver_uninstall();
+                wideFilter = false;
+                if (!can_init(false)) {
+                    driverStarted = false;
+                }
+            };
+            const bool wantOffroad = liveData.offroadAbsRequested;
+            const unsigned long nowMs = millis();
+            const bool bikeStopped = !wheelSpeedSeen || nowMs - lastWheelFrameMs > WHEEL_SPEED_STALE_MS ||
+                                     wheelFrontRaw == 0;
+
+            if (offroadState == 0 && wantOffroad && nowMs >= offroadNextTry) {
+                twai_stop();
+                twai_driver_uninstall();
+                if (can_init(true)) {
+                    wideFilter = true;
+                    offroadSeen12A = false;
+                    offroadBikeActive = false;
+                    offroadOtherModule = false;
+                    offroadState = 1;
+                    offroadStateStart = nowMs;
+                } else {
+                    driverStarted = false;
+                }
+            } else if (offroadState == 1) {
+                if (!wantOffroad) {
+                    offroadState = 0;
+                    restoreNarrowFilter();
+                } else if (offroadOtherModule || offroadBikeActive) {
+                    log_error(offroadBikeActive ? "OFFROAD: already active, not sending"
+                                                : "OFFROAD: another module is sending, not sending");
+                    offroadState = 3;
+                    restoreNarrowFilter();
+                } else if (nowMs - offroadStateStart >= OFFROAD_ABS_WATCH_MS && offroadSeen12A) {
+                    if (bikeStopped) {
+                        log_error("OFFROAD: sending off-road ABS request");
+                        offroadState = 2;
+                        offroadStateStart = nowMs;
+                        offroadLastTx = nowMs - OFFROAD_ABS_TX_PERIOD_MS;
+                    } else {
+                        offroadState = 0;
+                        offroadNextTry = nowMs + OFFROAD_ABS_RETRY_MS;
+                        restoreNarrowFilter();
+                    }
+                } else if (nowMs - offroadStateStart >= 3000) {
+                    offroadState = 0;
+                    offroadNextTry = nowMs + OFFROAD_ABS_RETRY_MS;
+                    restoreNarrowFilter();
+                }
+            } else if (offroadState == 2) {
+                if (offroadOtherModule) {
+                    log_error("OFFROAD: another module started sending, aborting");
+                    offroadState = 3;
+                    restoreNarrowFilter();
+                } else if (!wantOffroad || !bikeStopped) {
+                    offroadState = 0;
+                    offroadNextTry = nowMs + OFFROAD_ABS_RETRY_MS;
+                    restoreNarrowFilter();
+                } else if (nowMs - offroadStateStart >= OFFROAD_ABS_TX_DURATION_MS) {
+                    log_error("OFFROAD: request sent, effective on next key cycle");
+                    offroadState = 3;
+                    restoreNarrowFilter();
+                } else if (nowMs - offroadLastTx >= OFFROAD_ABS_TX_PERIOD_MS) {
+                    offroadLastTx = nowMs;
+                    twai_message_t tx = {};
+                    tx.identifier = OFFROAD_ABS_CAN_ID;
+                    tx.data_length_code = 8;
+                    tx.data[0] = OFFROAD_ABS_PAYLOAD_BYTE0;
+                    twai_transmit(&tx, 0);
+                }
+            }
         }
 
         if (liveData.fuelResetTriggered) {
@@ -1370,6 +1541,33 @@ static void fuel_reset_event_cb(lv_event_t * e) {
         liveData.fuelResetTriggered = true;
     }
 }
+
+static lv_obj_t *offroad_switch = nullptr;
+
+static void offroad_switch_event_cb(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    bool enabled = lv_obj_has_state(offroad_switch, LV_STATE_CHECKED);
+    set_offroad_abs_request(enabled);
+    if (enabled) {
+        lv_obj_t *box = lv_msgbox_create(nullptr);
+        lv_msgbox_add_title(box, "Off-road ABS");
+        lv_msgbox_add_text(box, "Off-road ABS mode will take effect on the next key cycle.\n"
+                                "Turn the ignition off and back on.");
+        lv_msgbox_add_close_button(box);
+    }
+}
+// =========================================================================
+static void show_version_info_cb(lv_event_t *) {
+    lv_obj_t *box = lv_msgbox_create(nullptr);
+    lv_msgbox_add_title(box, "About");
+    char text[96];
+    snprintf(text, sizeof(text), "Firmware: %s (%s)\nBLE protocol: %d", FIRMWARE_VERSION,
+             FIRMWARE_VARIANT, BLE_PROTOCOL_VERSION);
+    lv_msgbox_add_text(box, text);
+    lv_msgbox_add_close_button(box);
+}
 // =========================================================================
 // 🎨 CORE 1: GRAPHICS UI INTERACTION AND ENGINE INTERACTION LAYER
 // =========================================================================
@@ -1411,7 +1609,7 @@ void UI_Layout_Init() {
     lv_obj_remove_style_all(rpm_bar);
     lv_obj_set_size(rpm_bar, 620, 34);
     lv_obj_align(rpm_bar, LV_ALIGN_CENTER, 0, 25);
-    lv_obj_remove_flag(rpm_bar, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(rpm_bar, false);
     lv_obj_set_style_bg_color(rpm_bar, lv_color_make(35, 35, 35), 0);
     lv_obj_set_style_bg_opa(rpm_bar, LV_OPA_COVER, 0);
 
@@ -1419,7 +1617,7 @@ void UI_Layout_Init() {
     lv_obj_remove_style_all(rpm_fill);
     lv_obj_set_pos(rpm_fill, 0, 0);
     lv_obj_set_size(rpm_fill, 1, 34);
-    lv_obj_remove_flag(rpm_fill, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(rpm_fill, false);
     lv_obj_set_style_bg_color(rpm_fill, lv_color_make(0, 220, 0), 0);
     lv_obj_set_style_bg_opa(rpm_fill, LV_OPA_COVER, 0);
 
@@ -1474,6 +1672,9 @@ void UI_Layout_Init() {
     lv_obj_add_style(can_status_label, &style_sub_header, 0);
     lv_obj_set_style_text_color(can_status_label, lv_color_hex(0xF1C40F), 0);
     lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
+    lv_obj_set_clickable(can_status_label, true);
+    lv_obj_set_ext_click_area(can_status_label, 20);
+    lv_obj_add_event_cb(can_status_label, show_version_info_cb, LV_EVENT_CLICKED, nullptr);
 
     abs_mode_label = lv_label_create(screen);
     lv_label_set_text(abs_mode_label, "ABS: ON");
@@ -1490,10 +1691,23 @@ void UI_Layout_Init() {
     clock_tick_base = lv_tick_get();
     clock_label = lv_label_create(screen);
     lv_obj_add_style(clock_label, &style_sub_header, 0);
-    lv_obj_align(clock_label, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_align(clock_label, LV_ALIGN_CENTER, 240, -135);
     lv_obj_set_clickable(clock_label, true);
     lv_obj_add_event_cb(clock_label, open_time_settings_overlay, LV_EVENT_CLICKED, nullptr);
     refresh_clock_label();
+
+    lv_obj_t *offroad_label = lv_label_create(screen);
+    lv_label_set_text(offroad_label, "Off-road ABS");
+    lv_obj_add_style(offroad_label, &style_sub_header, 0);
+    lv_obj_align(offroad_label, LV_ALIGN_BOTTOM_MID, -50, -15);
+
+    offroad_switch = lv_switch_create(screen);
+    lv_obj_set_size(offroad_switch, 70, 36);
+    lv_obj_align(offroad_switch, LV_ALIGN_BOTTOM_MID, 100, -12);
+    if (liveData.offroadAbsRequested) {
+        lv_obj_add_state(offroad_switch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(offroad_switch, offroad_switch_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // Fixed-width labels keep their position when the text width changes
     struct FixedLabel { lv_obj_t *label; int32_t width; lv_text_align_t align; };
@@ -1520,7 +1734,7 @@ void UI_Layout_Init() {
     lv_obj_align(rpm_value, LV_ALIGN_CENTER, 0, 65);
     lv_obj_align(mpg_label, LV_ALIGN_CENTER, -200, 125);
     lv_obj_align(range_label, LV_ALIGN_CENTER, 200, 125);
-    lv_obj_align(clock_label, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_align(clock_label, LV_ALIGN_CENTER, 240, -135);
     lv_obj_align(abs_mode_label, LV_ALIGN_BOTTOM_LEFT, 20, -15);
     lv_obj_align(side_stand_label, LV_ALIGN_BOTTOM_LEFT, 20, -55);
     lv_obj_align(can_status_label, LV_ALIGN_BOTTOM_RIGHT, -20, -15);
@@ -1685,6 +1899,12 @@ void UIProcessingLoop(void * pvParameters) {
 
         refresh_clock_label();
 
+        bool wantOffroad = liveData.offroadAbsRequested;
+        if (offroad_switch != nullptr && wantOffroad != lv_obj_has_state(offroad_switch, LV_STATE_CHECKED)) {
+            if (wantOffroad) lv_obj_add_state(offroad_switch, LV_STATE_CHECKED);
+            else lv_obj_remove_state(offroad_switch, LV_STATE_CHECKED);
+        }
+
         if (localRPM > ENGINE_RUN_RPM_THRESHOLD) {
             engineHasRun = true;
         } else if (engineHasRun) {
@@ -1714,6 +1934,7 @@ static void ble_get_snapshot(BleSnapshot &out) {
     out.canActive = liveData.canActive;
     out.absMode = liveData.absModeStatus;
     out.sideStand = liveData.sideStandStatus;
+    out.offroadAbsRequested = liveData.offroadAbsRequested;
     out.fuelLiters = liveData.fuelRemaining;
     out.mpg = liveData.currentMPG;
     xSemaphoreGive(dataMutex);
@@ -1725,6 +1946,8 @@ static void ble_get_snapshot(BleSnapshot &out) {
 static void ble_on_command(uint8_t command) {
     if (command == BLE_CMD_RESET_FUEL) {
         liveData.fuelResetTriggered = true;
+    } else if (command == BLE_CMD_OFFROAD_ABS_ON || command == BLE_CMD_OFFROAD_ABS_OFF) {
+        set_offroad_abs_request(command == BLE_CMD_OFFROAD_ABS_ON);
     }
 }
 
@@ -1733,6 +1956,13 @@ void setup() {
     delay(1000);
 
     dataMutex = xSemaphoreCreateMutex();
+    {
+        Preferences settings;
+        if (settings.begin("bike-settings", true)) {
+            liveData.offroadAbsRequested = settings.getBool("offroadAbs", false);
+            settings.end();
+        }
+    }
 #ifndef HEADLESS_BUILD
     touchMutex = xSemaphoreCreateMutex();
     sharedI2cMutex = xSemaphoreCreateMutex();

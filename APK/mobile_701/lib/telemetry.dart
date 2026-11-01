@@ -2,7 +2,10 @@
 /// and mirrors ble_telemetry_pack() in the ESP32 firmware.
 class Telemetry {
   static const int packetSize = 12;
-  static const int protocolVersion = 1;
+  /// Highest BLE protocol version this app understands (see Docs/BLE_Protocol.md).
+  /// Versions 1..protocolVersion share the same telemetry packet layout.
+  static const int protocolVersion = 2;
+  static const int minProtocolVersion = 1;
 
   // Must match TOTAL_FUEL_CAPACITY / unit conversions in the firmware UI.
   static const double litersToGallons = 0.264172;
@@ -17,6 +20,7 @@ class Telemetry {
     this.fuelLiters = 0,
     this.fuelPercent = 0,
     this.mpg = 0,
+    this.offroadAbsRequested = false,
   });
 
   final int rpm;
@@ -28,6 +32,7 @@ class Telemetry {
   final double fuelLiters;
   final int fuelPercent;
   final double mpg;
+  final bool offroadAbsRequested; // user setting stored on the ESP32
 
   double get fuelGallons => fuelLiters * litersToGallons;
   double get tempFahrenheit => coolantTempC * 9.0 / 5.0 + 32.0;
@@ -35,7 +40,11 @@ class Telemetry {
 
   /// Returns null when [data] is not a valid packet of the supported version.
   static Telemetry? parse(List<int> data) {
-    if (data.length < packetSize || data[0] != protocolVersion) return null;
+    if (data.length < packetSize ||
+        data[0] < minProtocolVersion ||
+        data[0] > protocolVersion) {
+      return null;
+    }
     int u16(int i) => data[i] | (data[i + 1] << 8);
     int s16(int i) {
       final v = u16(i);
@@ -53,6 +62,7 @@ class Telemetry {
       fuelLiters: u16(7) / 100.0,
       fuelPercent: data[9].clamp(0, 100),
       mpg: u16(10) / 10.0,
+      offroadAbsRequested: (flags & 0x20) != 0,
     );
   }
 }

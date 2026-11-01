@@ -7,15 +7,34 @@
 // Service  : 7a010000-701d-4a5e-9f3b-0701d15b1e00
 //  TELEMETRY (read|notify) : 12-byte little-endian packet, see BleSnapshot / ble_telemetry_pack()
 //  COMMAND   (write)       : 1 byte, 0x01 = reset fuel (same as the on-screen Reset button)
+//  INFO      (read)        : ASCII "fw=<version>;proto=<n>;build=<variant>"
 
 #define BLE_DEVICE_NAME          "Husky701"
 #define BLE_SERVICE_UUID         "7a010000-701d-4a5e-9f3b-0701d15b1e00"
 #define BLE_TELEMETRY_CHAR_UUID  "7a010001-701d-4a5e-9f3b-0701d15b1e00"
 #define BLE_COMMAND_CHAR_UUID    "7a010002-701d-4a5e-9f3b-0701d15b1e00"
 
-#define BLE_PROTOCOL_VERSION     1
-#define BLE_PACKET_SIZE          12
+#define BLE_INFO_CHAR_UUID       "7a010003-701d-4a5e-9f3b-0701d15b1e00"
+
+// BLE interface version: increment on ANY change to the GATT layout, telemetry packet or
+// command set, and record it in Docs/BLE_Protocol.md (version history) and in the app's
+// Telemetry.maxProtocolVersion. Telemetry byte 0 carries this value.
+//  1 = initial 12-byte telemetry + commands 0x01-0x03
+//  2 = adds read-only INFO characteristic (firmware version, build variant)
+#define BLE_PROTOCOL_VERSION     2
+
+// Firmware version: increment on every release of either build variant.
+#define FIRMWARE_VERSION         "1.0.0"
+#ifdef HEADLESS_BUILD
+#define FIRMWARE_VARIANT         "headless"
+#else
+#define FIRMWARE_VARIANT         "43b"
+#endif
+
+#define BLE_PACKET_SIZE           12
 #define BLE_CMD_RESET_FUEL       0x01
+#define BLE_CMD_OFFROAD_ABS_ON   0x02
+#define BLE_CMD_OFFROAD_ABS_OFF  0x03
 
 // Values exactly as the display UI consumes them (metric units, converted by the app).
 struct BleSnapshot {
@@ -28,6 +47,7 @@ struct BleSnapshot {
     float    fuelLiters;
     uint8_t  fuelPercent; // 0..100
     float    mpg;
+    bool     offroadAbsRequested = false; // user setting stored on the ESP32 (flags bit 5)
 };
 
 typedef void (*BleSnapshotFn)(BleSnapshot &out);
