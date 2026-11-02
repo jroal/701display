@@ -6,7 +6,8 @@ This project uses an ESP32-S3 module (either a 4.3inch Capacitive Touch LCD Deve
 
 In November 2026 an ABS off-road mode feature was added. This feature allows the user to enable off-road mode which becomes active on the next key cycle. This performs the same function at the off-road ABS dongle but allows the user to enable/disable it as needed. 
 
-<img width="798" height="477" alt="image" src="https://github.com/user-attachments/assets/3367fc76-76ad-4862-9556-7ac19bd87313" />
+<img width="799" height="476" alt="ESP32_43b_Emulator" src="https://github.com/user-attachments/assets/a35310a3-be32-482c-b272-e6d41821409f" />
+
 
 See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)
 
