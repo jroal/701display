@@ -46,3 +46,12 @@ The app derives gallons, °F and range (`gallons × MPG`) with the same formulas
 | `0x03` | Clear the off-road ABS request |
 
 Code: `src/ble_telemetry.{h,cpp}` (firmware), `APK/mobile_701/lib/{telemetry,ble_client,dashboard}.dart` (app).
+
+## Version compatibility
+
+| BLE protocol | ESP32 firmware | Compatible Android app |
+|--------------|----------------|------------------------|
+| 1 | Earlier firmware (firmware version not recorded) | `1.0.4+4`; `1.1.0+5` |
+| 2 | `1.0.0` (`43b` or `headless`) | `1.1.0+5` |
+
+App `1.0.4+4` accepts protocol 1 only. App `1.1.0+5` accepts protocols 1 through 2, so it works with both firmware generations.
