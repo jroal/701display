@@ -6,7 +6,6 @@ This change log highlights some of the more significant changes as the project e
 
 - October 24, 2026: Added setting features. Created setting to keep display ON while the app is open. Added setting to select which BLE server to connect to. This handles the situation where 2 or more BLE servers are within range. By default it looks for any available. Then it lists the servers found so the user can select which one they connect to.
 
-<<<<<<< HEAD
 - October 27, 2026: Added a floating overlay option to show remaining range in the Android app (now version 4, 1.0.4). Also changed to not use full screen, leaving the navigation bar exposed. 
 
 - November 1, 2026: Fixed the display falsely reporting ABS OFF a few seconds after the ABS prove-out roll. The ABS OFF inference (0x129 bit 3 held low) was removed because that bit is low whenever the bike is idle; the display now shows only ABS ON or off-road. The off-road request now starts within ~100 ms of power-up and is sent continuously until another module sends it, the bike moves, or the switch is turned off. Added an SD-card auto-disable, firmware/BLE protocol versions (INFO characteristic, About dialogs) and a diagnostic `_capture` build.
