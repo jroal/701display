@@ -22,6 +22,8 @@ I made a T harness with a plug and socket for the Euro 5 motorcycle OBD port. Th
 
 <img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
 
+These are [sealed electrical connectors 6189-6171 6180-6181 Compatible with Sumitomo HM 090](https://www.amazon.com/dp/B0FCLJP2ZY).
+
 I used 5-pin ebike connectors at the display end of the wiring harness so I could remove the display without removing the wire harness.
 
 You can run the ESP32 installer here: [https://jroal.github.io/701display/installer.html](https://jroal.github.io/701display/installer.html) 
