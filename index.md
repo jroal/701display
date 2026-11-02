@@ -40,6 +40,9 @@ In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build t
 
 I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo. We have now tested using the headless hardware and a [Carpuride W702 Plus motorcycle tablet](https://carpuride.com/collections/motorcycle-plus-series-app-enabled/products/carpuride-w702s-plus-wireless-portable-motorcycle-stereo-plug-and-play-bm05-bracket-install-apps-built-in-gps-dual-cameras).  
 
+<img width="1374" height="634" alt="image" src="https://github.com/user-attachments/assets/f4ee32e8-76d1-41d0-8354-238553d24424" />
+
+
 Google Play Store Listing: [https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display](https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display) 
 
 The changelog is here: [https://jroal.github.io/701display/changelog.html](https://jroal.github.io/701display/changelog.html)
