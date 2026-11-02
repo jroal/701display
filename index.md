@@ -6,7 +6,8 @@ This project uses an ESP32-S3 module (either a 4.3inch Capacitive Touch LCD Deve
 
 In November 2026 an ABS off-road mode feature was added. This feature allows the user to enable off-road mode which becomes active on the next key cycle. This performs the same function at the off-road ABS dongle but allows the user to enable/disable it as needed. 
 
-<img width="798" height="477" alt="image" src="https://github.com/user-attachments/assets/3367fc76-76ad-4862-9556-7ac19bd87313" />
+<img width="799" height="476" alt="ESP32_43b_Emulator" src="https://github.com/user-attachments/assets/a35310a3-be32-482c-b272-e6d41821409f" />
+
 
 See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)
 
@@ -38,6 +39,9 @@ In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build t
 ## Android Display Application
 
 I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo. We have now tested using the headless hardware and a [Carpuride W702 Plus motorcycle tablet](https://carpuride.com/collections/motorcycle-plus-series-app-enabled/products/carpuride-w702s-plus-wireless-portable-motorcycle-stereo-plug-and-play-bm05-bracket-install-apps-built-in-gps-dual-cameras).  
+
+<img width="1374" height="634" alt="image" src="https://github.com/user-attachments/assets/f4ee32e8-76d1-41d0-8354-238553d24424" />
+
 
 Google Play Store Listing: [https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display](https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display) 
 
