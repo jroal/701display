@@ -51,11 +51,14 @@ Connect the board to the OBD port:
 1. **Power**: switched 12 V (key-on) and ground, through the board's supply input.
 2. **CAN High / CAN Low**: to the CAN pins of the OBD connector.
 
-The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off.
+The 4 wires you need are the same 4 wires at the OBD port. The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off. The CAN wires must be a twisted pair. I used [shielded wire with 2 sets of twisted pairs](https://www.amazon.com/dp/B0FHPGN8M7) for the wiring. Ground the shield at one end.
 
-The OBD connector pinout is shown below (looking at the face of the OBD plug).
+The OBD connector pinout and wiring diagram is shown below. This is for the headless version. 
 
-<img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
+<img width="2276" height="3580" alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
+
+
+The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
 
 > Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up. Use a voltmeter to confirm power and ground is around 12VDC (positive). A high-impedance (digital) voltmeter can also be used to confirm CAN hi and low by connecting the voltmeter leads to the 2 CAN wires. It should read about 2.5VDC positive. If it shows negative then the positive lead is on the CAN low wire. 
 
