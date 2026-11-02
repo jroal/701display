@@ -53,11 +53,11 @@ Connect the ESP32 hardware to the OBD port:
 
 The 4 wires you need are the same 4 wires at the OBD port. The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off. The CAN wires must be a twisted pair. I used [shielded wire with 2 sets of twisted pairs](https://www.amazon.com/dp/B0FHPGN8M7) for the wiring. Ground the shield at one end.
 
-The OBD connector pinout and wiring diagram is shown below. This is for the headless version. 
+The OBD connector pinout and wiring diagram is shown below. This is for the headless version showing a simple harness (not the T harness). 
 
 <img alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
 
-You can make a T harness that leaves an OBD plug available for a scan tool or other devices to use. Optionally, you can simply connect the ESP32 as shown in the wiring diagram. 
+You can make a T harness that leaves an OBD plug available for a scan tool or other devices to use. Optionally, you can simply connect the ESP32 as shown in the wiring diagram above. 
 
 The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
 
