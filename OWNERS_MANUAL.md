@@ -151,6 +151,7 @@ How it works and safety rules:
 - It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
 - It stops sending if the bike moves.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
+- Always confirm ABS mode by observing the ABS light on next to the motorcycle factory display. The motorcycle starts witht he ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road OBS mode is indicated by the light flashing slowly (once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
 
 ### 8.3 Setting the date and time (display build)
 
