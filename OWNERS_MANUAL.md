@@ -53,7 +53,7 @@ Connect the board to the OBD port:
 
 The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off.
 
-The author's harness uses 5-pin e-bike connectors at the display end so the display can be removed without unplugging the bike harness. The OBD connector pinout is shown in [README.md](README.md).
+The author's harness uses 5-pin e-bike connectors at the display end so the display can be removed without unplugging the bike harness. The OBD connector pinout is shown below.
 
 <img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
 
