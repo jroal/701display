@@ -31,7 +31,7 @@ You can run the ESP32 installer here: [https://jroal.github.io/701display/instal
 
 ### Firmware builds
 
-- `waveshare_esp32s3_43b` builds the existing ESP32-S3 display hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
+- `waveshare_esp32s3_43b` builds the ESP32-S3 for the display version hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
 - `waveshare_esp32s3_rs485_can` builds the headless [Waveshare ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm?sku=32154) board. It keeps CAN telemetry, BLE, fuel estimation, and flash persistence, but does not initialize the display, touch controller, I2C RTC, or SD logging. PlatformIO auto-detects its serial port.
 
 In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build the headless variant, or **Upload Headless Hardware** to flash it.
