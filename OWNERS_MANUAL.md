@@ -46,16 +46,22 @@ The Android app (a phone or motorcycle tablet) shows the same dashboard as the 4
 
 ## 3. Wiring
 
-Connect the board to the OBD port:
+Connect the ESP32 hardware to the OBD port:
 
 1. **Power**: switched 12 V (key-on) and ground, through the board's supply input.
 2. **CAN High / CAN Low**: to the CAN pins of the OBD connector.
 
-The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off.
+The 4 wires you need are the same 4 wires at the OBD port. The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off. The CAN wires must be a twisted pair. I used [shielded wire with 2 sets of twisted pairs](https://www.amazon.com/dp/B0FHPGN8M7) for the wiring. Ground the shield at one end.
 
-The author's harness uses 5-pin e-bike connectors at the display end so the display can be removed without unplugging the bike harness. The OBD connector pinout is shown in [README.md](README.md).
+The OBD connector pinout and wiring diagram is shown below. This is for the headless version showing a simple harness (not the T harness). 
 
-> Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up.
+<img alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
+
+You can make a T harness that leaves an OBD plug available for a scan tool or other devices to use. Optionally, you can simply connect the ESP32 as shown in the wiring diagram above. 
+
+The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
+
+> Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up. Use a voltmeter to confirm power and ground is around 12VDC (positive). A high-impedance (digital) voltmeter can also be used to confirm CAN hi and low by connecting the voltmeter leads to the 2 CAN wires. It should read about 2.5VDC positive. If it shows negative then the positive lead is on the CAN low wire. 
 
 ## 4. Installing the firmware
 
@@ -115,7 +121,7 @@ The 4.3" display and the Android app show the same layout.
 | **CAN** | Bottom right | Green = receiving bike CAN data. Yellow = no data. On the display build, tap it to see versions. |
 | BLE status (app only) | Top left of the app | Search/connection state of the Bluetooth link. |
 
-> **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Rely on the bike's own ABS indicator.
+> **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Always refer to the bike's factory ABS indicator to ensure ABS state.
 
 ## 8. Functions and settings
 
@@ -124,20 +130,20 @@ The 4.3" display and the Android app show the same layout.
 The bike has no direct fuel-level signal on CAN, so the display **estimates** it:
 
 - Tap **Reset** after every fill-up to set the tank to full (13 L).
-- While you ride, the display subtracts the fuel the engine reports using (read over CAN using UDS).
+- While you ride, the display subtracts the fuel the engine is using based on a simple speed-density engine model in the ESP32 (the data for the speed-density model is read over CAN using UDS).
 - The consumed fuel and distance are saved to flash when the engine stops, so the estimate survives key-off and power loss.
 - **ECON** and **RANGE** are derived from that fuel use and distance.
 
-Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full. On the Android app, the Reset button works the same way (it is disabled while not connected).
+Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full before clicking reset. On the Android app, the Reset button works the same way as long as it has an active BLE connection (BLE connected and green at the top, it is disabled while not connected).
 
 ### 8.2 Off-road ABS
 
 Toggle **Off-road ABS** to have the bike start in off-road ABS mode at the next key-on.
 
-1. Turn the switch **ON**. A message tells you the mode takes effect on the next key cycle.
+1. Turn the "Off-road ABS" switch **ON**. A message tells you the mode takes effect on the next key cycle.
 2. Turn the ignition **OFF**, wait a few seconds, then key back **ON**.
-3. The display should show **ABS: OFF-Road**.
-4. To return to normal ABS, turn the switch **OFF** and key-cycle again.
+3. The ABS indicator at the bottom left of the display should show **ABS: OFF-Road**.
+4. To return to normal ABS, turn the "Off-road ABS" switch **OFF** and key-cycle again. When you key back ON the ABS indicator should now show ON.
 
 How it works and safety rules:
 
@@ -146,14 +152,15 @@ How it works and safety rules:
 - It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
 - It stops sending if the bike moves.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
+- Always confirm ABS mode by observing the ABS light next to the motorcycle factory display. See the motorcycle owners manual for details. The motorcycle starts with the ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road ABS mode is indicated by the light flashing slowly (a very brief flash once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
 
-### 8.3 Setting the date and time (display build)
+### 8.3 Setting the date and time (ESP32 with display only)
 
 Tap the date/time on the display. A **Set date & time** panel appears with +/− steppers for year, month, day, hour and minute. Tap **Set** to save to the real-time clock, or **Cancel**. An "Invalid date or time" message appears if the values are not a real date. The clock requires a coin cell backup battery installed on the board: it is needed to keep the ESP32 clock running while power is off, and the data logs depend on that clock for their timestamps and file names. Without the battery the clock must be set again after each power loss.
 
 The Android app does not show the clock.
 
-### 8.4 About / version information (display build)
+### 8.4 About / version information (ESP32 with display only)
 
 Tap the **CAN** label (bottom right). The **About** dialog shows the firmware version and build, and the BLE protocol version. Tap the close button to dismiss.
 
@@ -174,15 +181,15 @@ Use this app as the only display for the **headless** build, and as the place to
 
 Three versions are tracked so the parts work together:
 
-- **Firmware version** (for example `1.0.0`), the same number for both builds, with a build tag of `43b` or `headless`.
-- **BLE protocol version** (currently **2**), bumped whenever the Bluetooth interface changes. History is in [Docs/BLE_Protocol.md](Docs/BLE_Protocol.md).
-- **App version** (for example `1.1.0+5`).
+- **ESP32 Firmware version** (for example `1.0.0`), the same number for both builds, with a build tag of `43b` or `headless`.
+- **BLE protocol version** (currently **2**), bumped whenever the Bluetooth interface changes. History is in [Docs/BLE_Protocol.md](Docs/BLE_Protocol.md). Both the ESP32 BLE server and the Android BLE client must support the same protocol to function properly.
+- **Android App version** (for example `1.1.0+5`).
 
-The app accepts protocol versions 1 to 2. If the firmware reports a protocol version the app does not support, update the app (or the firmware) so the versions match. Always check the **About** dialogs after updating either side.
+The Android app accepts protocol versions 1 to 2. If the ESP32 firmware reports a protocol version the app does not support, update the app (or the firmware) so the versions are compatible. If you have issues you can check the **About** dialogs after updating either side.
 
-## 11. SD card logging (display build)
+## 11. SD card logging (ESP32 with display only)
 
-The display build can write data and error logs to a microSD card:
+If you are using the ESP32 with the display you can also capture data and error logs to a microSD card:
 
 - On start, it looks for a card. If none is found **after about 8 seconds, SD logging is switched off until the next reboot**. The display and BLE keep working normally.
 - With a card: CAN data files named `CANMMDDYYYY_HHMM.csv` (one per run, using the clock) and an `error.txt` log.
@@ -190,7 +197,7 @@ The display build can write data and error logs to a microSD card:
 - If you do not want data logging, simply leave the SD card out.
 - If you insert a card later, reboot to enable logging.
 
-The headless build has no SD logging.
+This feature is primarily used for development and troubleshooting. The headless ESP32 has no SD card slot or data logging capability. 
 
 ## 12. Troubleshooting
 
