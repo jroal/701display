@@ -55,7 +55,7 @@ The 4 wires you need are the same 4 wires at the OBD port. The CAN bus runs at *
 
 The OBD connector pinout and wiring diagram is shown below. This is for the headless version. 
 
-<img width="2276" height="3580" alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
+<img width="100%" alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
 
 
 The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
