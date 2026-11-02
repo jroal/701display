@@ -53,11 +53,11 @@ Connect the board to the OBD port:
 
 The CAN bus runs at **500 kbps**. Do not power the board from an always-on feed unless you accept the board staying on when the key is off.
 
-The author's harness uses 5-pin e-bike connectors at the display end so the display can be removed without unplugging the bike harness. The OBD connector pinout is shown below.
+The OBD connector pinout is shown below (looking at the face of the OBD plug).
 
 <img width="986" height="736" alt="HuskyOBDFace" src="https://github.com/user-attachments/assets/7b9ec2c9-35ec-4e07-a771-2fb836d68805" />
 
-> Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up.
+> Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up. Use a voltmeter to confirm power and ground is around 12VDC (positive). A high-impedance (digital) voltmeter can also be used to confirm CAN hi and low by connecting the voltmeter leads to the 2 CAN wires. It should read about 2.5VDC positive. If it shows negative then the positive lead is on the CAN low wire. 
 
 ## 4. Installing the firmware
 
