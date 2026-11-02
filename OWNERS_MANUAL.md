@@ -46,7 +46,7 @@ The Android app (a phone or motorcycle tablet) shows the same dashboard as the 4
 
 ## 3. Wiring
 
-Connect the board to the OBD port:
+Connect the ESP32 hardware to the OBD port:
 
 1. **Power**: switched 12 V (key-on) and ground, through the board's supply input.
 2. **CAN High / CAN Low**: to the CAN pins of the OBD connector.
@@ -57,6 +57,7 @@ The OBD connector pinout and wiring diagram is shown below. This is for the head
 
 <img alt="image" src="https://github.com/user-attachments/assets/39828fe4-7c5f-4158-be37-302af2a4c142" />
 
+You can make a T harness that leaves an OBD plug available for a scan tool or other devices to use. Optionally, you can simply connect the ESP32 as shown in the wiring diagram. 
 
 The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
 
@@ -120,7 +121,7 @@ The 4.3" display and the Android app show the same layout.
 | **CAN** | Bottom right | Green = receiving bike CAN data. Yellow = no data. On the display build, tap it to see versions. |
 | BLE status (app only) | Top left of the app | Search/connection state of the Bluetooth link. |
 
-> **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Rely on the bike's own ABS indicator.
+> **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Rely on the bike's own ABS indicator to ensure ABS state.
 
 ## 8. Functions and settings
 
@@ -151,7 +152,7 @@ How it works and safety rules:
 - It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
 - It stops sending if the bike moves.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
-- Always confirm ABS mode by observing the ABS light on next to the motorcycle factory display. The motorcycle starts witht he ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road OBS mode is indicated by the light flashing slowly (once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
+- Always confirm ABS mode by observing the ABS light next to the motorcycle factory display. See the motorcycle owners manual for details. The motorcycle starts with the ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road ABS mode is indicated by the light flashing slowly (a very brief flash once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
 
 ### 8.3 Setting the date and time (display build)
 
