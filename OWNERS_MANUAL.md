@@ -136,6 +136,8 @@ The bike has no direct fuel-level signal on CAN, so the display **estimates** it
 
 Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full before clicking reset. On the Android app, the Reset button works the same way as long as it has an active BLE connection (BLE connected and green at the top, it is disabled while not connected).
 
+Starting with version 6 (1.2.0) of the Android app (and associated ESP32 firmware and BLE protocol) the user can add fuel to the remaining fuel. This is done by clicking the remaining fuel label (top right). An add fuel dialog appears where the user can select the amount to add to the tank. Once selected, click the add button. This is useful when you carry additional fuel that you add to the tank on the ride. It is best to run the fuel down more than the fuel can capacity you will add. For instance, if you have a 1 gallon gas can make sure there is more than 1 gallon of open volume in the tank (meaning the remaining fuel is less than 2.4 gallons) before adding the fuel. 
+
 ### 8.2 Off-road ABS
 
 Toggle **Off-road ABS** to have the bike start in off-road ABS mode at the next key-on.
@@ -172,6 +174,7 @@ Tap the **gear icon** at the top right to open **Settings**:
 |---|---|
 | **Keep display ON while using** | Keeps the phone/tablet screen awake while the app is open. |
 | **Show fuel range over other apps** | Shows a small floating fuel-range window while the app is in the background (for example while using navigation). Android will ask for the "display over other apps" permission the first time. |
+| **Units** | Sets English or Metric units.|
 | **About** | Opens a dialog listing the app version, the BLE protocol range the app supports, and, when connected, the display's firmware version, build (`43b` or `headless`) and BLE protocol version. |
 | **701 display to connect to** | Choose **Any (first one found)** or a specific display (`Husky701-XXXXXX`, with address and signal strength). The choice is remembered. A saved display that is out of range is shown as "Not in range". |
 
