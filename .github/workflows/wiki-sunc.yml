@@ -1,0 +1,35 @@
+name: Sync Markdown to Wiki
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow 
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Clone Wiki Repository
+        run: |
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki
+
+      - name: Copy Files to Wiki
+        run: |
+          # Copy target markdown file(s) into the cloned wiki directory
+          cp OWNERS_MANUAL.md wiki/Manual.md
+          cp Docs/BLE_Protocol.md wiki/BLE_Protocol.md
+          
+      - name: Push to Wiki
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Auto-update wiki from repository [skip ci]"
+            git push
+          fi

@@ -2,7 +2,13 @@
 
 # Project Overview
 
-This project uses an ESP32-S3 module (either a 4.3inch Capacitive Touch LCD Development Board Type B with Case 800×480 Solution IPS Display with 2.4GHz WiFi and BLE 5 Support,32-bit LX7 Dual-core Processor( or a headless ESP32 as a secondary display for a Husqvarna 701 Enduro (Euro 5) motorcycle. Mine is a 2023 USA version. **The main feature of this project is the virtual fuel gauge, fuel economy, and fuel range display**. This display adds a gear indicator, RPM bar graph and display, engine coolant temperature, fuel range and fuel economy. It estimates remaining fuel by a manual reset at fill-up and then subtracting off the fuel consumed by the engine which it reads from CAN using UDS. 
+This project uses an ESP32-S3 module (either a 4.3inch Capacitive Touch LCD Development Board Type B with Case 800×480 Solution IPS Display with 2.4GHz WiFi and BLE 5 Support,32-bit LX7 Dual-core Processor (or a headless ESP32 as a secondary display for a Husqvarna 701 Enduro (Euro 5) motorcycle. Mine is a 2023 USA version. This should also work on other KTM LC4 equipped motorcycles (KTM 690, GasGas 700) with the Bosch 9.1 MP CAN bus network / Keihin ECU platform and Euro 5 OBD connector:
+
+- GasGas 700: Every model year made (2022+). (needs testing)
+- KTM 690: 2021 and newer. (need testing)
+- Husqvarna 701: 2021 and newer. (developed and tested on this)   
+
+**The main feature of this project is the virtual fuel gauge, fuel economy, and fuel range display**. This display adds a gear indicator, RPM bar graph and display, engine coolant temperature, fuel range and fuel economy. It estimates remaining fuel by a manual reset at fill-up and then subtracting off the fuel consumed by the engine which it reads from CAN using UDS. 
 
 In November 2026 an ABS off-road mode feature was added. This feature allows the user to enable off-road mode which becomes active on the next key cycle. This performs the same function as the off-road ABS dongle but allows the user to enable/disable it as needed. 
 
