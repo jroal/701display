@@ -52,6 +52,7 @@ Future<void> showAddFuelDialog(
       builder: (ctx, setDialog) {
         final newTotal = units.volumeToDisplay(currentL) + selected * step;
         return AlertDialog(
+          scrollable: true,
           title: Text(l10n.addFuelTitle),
           content: blocked != null
               ? Text(blocked)
