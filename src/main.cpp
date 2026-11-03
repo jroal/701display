@@ -122,6 +122,8 @@ SemaphoreHandle_t dataMutex;
 struct BikeMetrics {
     float fuelRemaining = 5;
     float fuelConsumed = 0.0;
+    float fuelAddedL = 0.0;         // Fuel added by the user since the last reset (BLE command)
+    volatile float fuelAddRequestL = 0.0f; // Pending add request from BLE, applied by the CAN task
     float distanceTraveledKm = 0.0; // Cumulative distance track since last fill-up
     float currentMPG = 0.0;         // Calculated average fuel efficiency
     uint16_t engineRPM = 0;
@@ -953,6 +955,14 @@ static void persistFuelDataIfChanged(float consumed, float distance) {
     nvStorage.end();
 }
 
+static void persistFuelAdded(float added) {
+    nvStorage.begin("bike-fuel", false);
+    if (nvStorage.getFloat("added", 0.0f) != added) {
+        nvStorage.putFloat("added", added);
+    }
+    nvStorage.end();
+}
+
 void CANProcessingLoop(void * pvParameters) {
     bool driverStarted = false;
     bool busOffRecoveryStarted = false;
@@ -1185,7 +1195,7 @@ void CANProcessingLoop(void * pvParameters) {
                         fuelRateLph = airGs / FUEL_EST_AFR / FUEL_DENSITY_G_PER_L * 3600.0f;
                         float deltaHours = (currentTime - lastFuelRateCheck) / 3600000.0f;
                         liveData.fuelConsumed += fuelRateLph * deltaHours;
-                        liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
+                        liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed + liveData.fuelAddedL;
                         if (liveData.fuelRemaining < 0.0f) {
                             liveData.fuelRemaining = 0.0f;
                         }
@@ -1381,12 +1391,28 @@ void CANProcessingLoop(void * pvParameters) {
         if (liveData.fuelResetTriggered) {
             xSemaphoreTake(dataMutex, portMAX_DELAY);
             liveData.fuelConsumed = 0.0;
+            liveData.fuelAddedL = 0.0;
+            liveData.fuelAddRequestL = 0.0f;
             liveData.fuelRemaining = TOTAL_FUEL_CAPACITY;
             liveData.distanceTraveledKm = 0.0; 
             liveData.currentMPG = 0.0;
             liveData.fuelResetTriggered = false;
 
             persistFuelDataIfChanged(0.0f, 0.0f);
+            persistFuelAdded(0.0f);
+            xSemaphoreGive(dataMutex);
+        }
+        if (liveData.fuelAddRequestL > 0.0f) {
+            xSemaphoreTake(dataMutex, portMAX_DELAY);
+            float room = TOTAL_FUEL_CAPACITY - liveData.fuelRemaining;
+            float add = liveData.fuelAddRequestL;
+            if (add > room) add = room;
+            liveData.fuelAddRequestL = 0.0f;
+            if (add > 0.0f) {
+                liveData.fuelAddedL += add;
+                liveData.fuelRemaining += add;
+                persistFuelAdded(liveData.fuelAddedL);
+            }
             xSemaphoreGive(dataMutex);
         }
         static uint8_t burstCount = 0;
@@ -1976,9 +2002,13 @@ static void ble_get_snapshot(BleSnapshot &out) {
     out.fuelPercent = percent < 0.0f ? 0 : (percent > 100.0f ? 100 : (uint8_t)percent);
 }
 
-static void ble_on_command(uint8_t command) {
+static void ble_on_command(uint8_t command, const uint8_t *payload, size_t length) {
     if (command == BLE_CMD_RESET_FUEL) {
         liveData.fuelResetTriggered = true;
+    } else if (command == BLE_CMD_ADD_FUEL && length >= 2) {
+        // Payload: u16 little-endian, 0.01 L to add; clamped to the tank capacity by the CAN task.
+        uint16_t centiLiters = payload[0] | (payload[1] << 8);
+        liveData.fuelAddRequestL = centiLiters / 100.0f;
     } else if (command == BLE_CMD_OFFROAD_ABS_ON || command == BLE_CMD_OFFROAD_ABS_OFF) {
         set_offroad_abs_request(command == BLE_CMD_OFFROAD_ABS_ON);
     }
@@ -2060,7 +2090,10 @@ void setup() {
     liveData.fuelConsumed = nvStorage.getFloat("consumed", 0.0);
     fuelConsumedAtStartup = liveData.fuelConsumed;
     liveData.distanceTraveledKm = nvStorage.getFloat("distance", 0.0); 
-    liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed;
+    liveData.fuelAddedL = nvStorage.getFloat("added", 0.0);
+    if (liveData.fuelAddedL < 0.0f) liveData.fuelAddedL = 0.0f;
+    liveData.fuelRemaining = TOTAL_FUEL_CAPACITY - liveData.fuelConsumed + liveData.fuelAddedL;
+    if (liveData.fuelRemaining > TOTAL_FUEL_CAPACITY) liveData.fuelRemaining = TOTAL_FUEL_CAPACITY;
     if (liveData.fuelRemaining < 0.0f) {
         liveData.fuelRemaining = 0.0f;
     }

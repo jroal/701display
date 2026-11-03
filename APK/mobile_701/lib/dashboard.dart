@@ -5,9 +5,12 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'add_fuel_dialog.dart';
 import 'ble_client.dart';
+import 'l10n/app_localizations.dart';
 import 'range_overlay.dart';
 import 'telemetry.dart';
+import 'units.dart';
 
 const _keepOnKey = 'keep_display_on';
 
@@ -67,19 +70,30 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   // The overlay is only shown while the app is in the background.
   Future<void> _syncOverlay() async {
     if (!_overlayEnabled || !_inBackground) return;
+    final l10n = AppLocalizations.of(context);
     if (!await RangeOverlay.hasPermission()) return;
-    await _overlay.show();
+    await _overlay.show(
+      notificationTitle: l10n.overlayNotificationTitle,
+      notificationContent: l10n.overlayNotificationContent,
+    );
     _pushOverlayUpdate();
   }
 
   void _pushOverlayUpdate() {
     if (!_overlayEnabled || !_inBackground) return;
     final t = widget.ble.telemetry;
+    final l10n = AppLocalizations.of(context);
     unawaited(
       _overlay.update(
         rangeText: t.mpg > 0
-            ? '${t.rangeMiles.toStringAsFixed(0)} mi'
-            : '-- mi',
+            ? (_units == UnitSystem.metric
+                  ? l10n.rangeKmShort
+                  : l10n.rangeMilesShort)(
+                _units.milesToDisplay(t.rangeMiles).toStringAsFixed(0),
+              )
+            : (_units == UnitSystem.metric
+                  ? l10n.rangeUnknownKmShort
+                  : l10n.rangeUnknownShort),
         live: widget.ble.connected,
       ),
     );
@@ -96,6 +110,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   }
 
   bool _keepOn = false;
+  UnitSystem _units = UnitSystem.imperial;
 
   Future<void> _setWakelock(bool on) async {
     try {
@@ -113,9 +128,19 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _keepOn = v;
+        _units = UnitSystem.fromName(prefs.getString(UnitSystem.prefsKey));
         _overlayEnabled = overlayOn;
       });
       _setWakelock(v);
+    } catch (_) {}
+  }
+
+  Future<void> _setUnits(UnitSystem u) async {
+    setState(() => _units = u);
+    _pushOverlayUpdate();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(UnitSystem.prefsKey, u.name);
     } catch (_) {}
   }
 
@@ -128,7 +153,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  List<Widget> _deviceTiles() {
+  List<Widget> _deviceTiles(AppLocalizations l10n) {
     final ble = widget.ble;
     final devices = ble.nearby.values.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
@@ -146,21 +171,22 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
       onTap: () => ble.selectDevice(id),
     );
     return [
-      tile(null, 'Any (first one found)', null),
+      tile(null, l10n.anyDisplay, null),
       for (final device in devices)
         tile(
           device.selectionId,
           device.name,
-          '${device.address}  |  ${device.rssi} dBm'
-          '${ble.connected && ble.connectedId == device.selectionId ? '  |  connected' : ''}',
+          ble.connected && ble.connectedId == device.selectionId
+              ? l10n.deviceDetailsConnected(device.address, device.rssi)
+              : l10n.deviceDetails(device.address, device.rssi),
         ),
       if (ble.selectedId != null && !selectedIsNearby)
         tile(
           ble.selectedId,
           ble.selectedId!.startsWith('Husky701-')
               ? ble.selectedId!
-              : 'Saved display',
-          'Not in range',
+              : l10n.savedDisplay,
+          l10n.notInRange,
         ),
     ];
   }
@@ -168,26 +194,36 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   Future<void> _openAbout() async {
     final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('About'),
+        title: Text(l10n.aboutTitle),
         content: ListenableBuilder(
           listenable: widget.ble,
           builder: (_, _) {
             final d = widget.ble.displayInfo;
             final connected = widget.ble.connected;
-            String row(String k, String? v) => '$k: ${v ?? 'unknown'}';
+            String row(String k, String? v) =>
+                l10n.aboutRow(k, v ?? l10n.aboutUnknown);
             final lines = <String>[
-              row('App version', '${info.version}+${info.buildNumber}'),
-              row('App BLE protocol', '${Telemetry.minProtocolVersion}-${Telemetry.protocolVersion}'),
+              row(l10n.aboutAppVersion, '${info.version}+${info.buildNumber}'),
+              row(
+                l10n.aboutAppProtocol,
+                '${Telemetry.minProtocolVersion}-${Telemetry.protocolVersion}',
+              ),
               if (!connected)
-                'Connect to a display to see its versions.'
+                l10n.aboutConnectToSeeVersions
               else ...[
-                row('Display firmware', d?.firmware ?? 'older than 1.0.0'),
-                row('Display build', d?.build),
-                row('Display BLE protocol',
-                    (d?.protocol ?? widget.ble.protocolVersion)?.toString()),
+                row(
+                  l10n.aboutDisplayFirmware,
+                  d?.firmware ?? l10n.aboutOlderThanFirmware,
+                ),
+                row(l10n.aboutDisplayBuild, d?.build),
+                row(
+                  l10n.aboutDisplayProtocol,
+                  (d?.protocol ?? widget.ble.protocolVersion)?.toString(),
+                ),
               ],
             ];
             return Text(lines.join('\n'));
@@ -196,7 +232,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -204,11 +240,12 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   }
 
   void _openSettings() {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Settings'),
+          title: Text(l10n.settingsTitle),
           content: SizedBox(
             width: 360,
             child: SingleChildScrollView(
@@ -221,7 +258,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
-                      title: const Text('Keep display ON while using'),
+                      title: Text(l10n.keepDisplayOn),
                       value: _keepOn,
                       onChanged: (v) {
                         _setKeepOn(v ?? false);
@@ -231,10 +268,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
-                      title: const Text('Show fuel range over other apps'),
-                      subtitle: const Text(
-                        'Floating window while this app is in the background',
-                      ),
+                      title: Text(l10n.showRangeOverlay),
+                      subtitle: Text(l10n.showRangeOverlayHint),
                       value: _overlayEnabled,
                       onChanged: (v) async {
                         await _setOverlayEnabled(v ?? false);
@@ -242,15 +277,36 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       },
                     ),
                     const Divider(),
+                    Text(l10n.unitsTitle),
+                    const SizedBox(height: 8),
+                    SegmentedButton<UnitSystem>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: UnitSystem.imperial,
+                          label: Text(l10n.unitsImperial),
+                        ),
+                        ButtonSegment(
+                          value: UnitSystem.metric,
+                          label: Text(l10n.unitsMetric),
+                        ),
+                      ],
+                      selected: {_units},
+                      onSelectionChanged: (s) {
+                        _setUnits(s.first);
+                        setDialog(() {});
+                      },
+                    ),
+                    const Divider(),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.info_outline),
-                      title: const Text('About'),
+                      title: Text(l10n.aboutTitle),
                       onTap: _openAbout,
                     ),
                     const Divider(),
-                    const Text('701 display to connect to'),
-                    ..._deviceTiles(),
+                    Text(l10n.displayToConnectTo),
+                    ..._deviceTiles(l10n),
                   ],
                 ),
               ),
@@ -259,7 +315,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
+              child: Text(l10n.close),
             ),
           ],
         ),
@@ -291,7 +347,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
               right: 0,
               top: 0,
               child: IconButton(
-                tooltip: 'Settings',
+                tooltip: AppLocalizations.of(context).settingsTooltip,
                 iconSize: 20,
                 color: Colors.white54,
                 icon: const Icon(Icons.settings),
@@ -337,8 +393,10 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   }
 
   Widget _canvas(BleClient ble) {
+    final l10n = AppLocalizations.of(context);
     final t = ble.telemetry;
     final live = ble.connected;
+    final metric = _units == UnitSystem.metric;
 
     final rpmClamped = t.rpm > _rpmMaxScale ? _rpmMaxScale : t.rpm.toDouble();
     final fillWidth = (rpmClamped * 620 / _rpmMaxScale).clamp(1.0, 620.0);
@@ -349,37 +407,49 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
               : const Color(0xFFFF0000));
 
     final absText = t.absMode == 2
-        ? 'ABS: OFF'
-        : (t.absMode == 1 ? 'ABS: OFF-Road' : 'ABS: ON');
+        ? l10n.absOff
+        : (t.absMode == 1 ? l10n.absOffRoad : l10n.absOn);
     final String standText;
     final Color standColor;
     switch (t.sideStand) {
       case 1:
-        standText = 'STAND: DOWN';
+        standText = l10n.standDown;
         standColor = _red;
       case 2:
-        standText = 'STAND: UP';
+        standText = l10n.standUp;
         standColor = _green;
       default:
-        standText = 'STAND: --';
+        standText = l10n.standUnknown;
         standColor = _cyan;
     }
 
     return Stack(
       children: [
         // Fuel gauge (top left)
-        _centered(-220, -175, 300, 38, _fuelBar(t.fuelPercent)),
-        _centered(-220, -135, 300, 30, _fuelMarkers()),
+        _centered(-220, -175, 300, 38, _fuelBar(t.fuelPercent, l10n)),
+        _centered(-220, -135, 300, 30, _fuelMarkers(l10n)),
         _centered(
           240,
           -175,
           260,
           40,
-          _label('FUEL: ${t.fuelGallons.toStringAsFixed(2)} gal', 32, _text),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => showAddFuelDialog(context, ble, _units),
+            child: _label(
+              metric
+                  ? l10n.fuelLiters(
+                      _units.gallonsToDisplay(t.fuelGallons).toStringAsFixed(1),
+                    )
+                  : l10n.fuelGallons(t.fuelGallons.toStringAsFixed(2)),
+              32,
+              _text,
+            ),
+          ),
         ),
 
         // Reset button
-        _centered(30, -175, 180, 44, _resetButton(live)),
+        _centered(30, -175, 180, 44, _resetButton(live, l10n)),
 
         // Temp / gear
         _centered(
@@ -387,14 +457,26 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           -65,
           400,
           56,
-          _label('TEMP: ${t.tempFahrenheit.toStringAsFixed(0)} F', 48, _gold),
+          _label(
+            (metric ? l10n.tempCelsius : l10n.tempFahrenheit)(
+              _units
+                  .fahrenheitToDisplay(t.tempFahrenheit.toDouble())
+                  .toStringAsFixed(0),
+            ),
+            48,
+            _gold,
+          ),
         ),
         _centered(
           200,
           -65,
           400,
           56,
-          _label(t.gear == 0 ? 'GEAR: N' : 'GEAR: ${t.gear}', 48, _gold),
+          _label(
+            t.gear == 0 ? l10n.gearNeutral : l10n.gearNumber(t.gear),
+            48,
+            _gold,
+          ),
         ),
 
         // RPM bar
@@ -409,7 +491,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
             child: Container(width: fillWidth, height: 34, color: rpmColor),
           ),
         ),
-        _centered(0, 65, 300, 30, _label('${t.rpm} RPM', 24, _cyan)),
+        _centered(0, 65, 300, 30, _label(l10n.rpmValue(t.rpm), 24, _cyan)),
 
         // Economy / range
         _centered(
@@ -417,7 +499,17 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           125,
           400,
           56,
-          _label('ECON: ${t.mpg.toStringAsFixed(1)}', 48, _gold),
+          _label(
+            metric
+                ? (t.mpg > 0
+                      ? l10n.economyMetric(
+                          _units.economyToDisplay(t.mpg).toStringAsFixed(1),
+                        )
+                      : l10n.economyMetric('--'))
+                : l10n.economy(t.mpg.toStringAsFixed(1)),
+            48,
+            _gold,
+          ),
         ),
         _centered(
           200,
@@ -426,8 +518,10 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           56,
           _label(
             t.mpg > 0
-                ? 'RANGE: ${t.rangeMiles.toStringAsFixed(0)} mi'
-                : 'RANGE: -- mi',
+                ? (metric ? l10n.rangeKmLabel : l10n.rangeMilesLabel)(
+                    _units.milesToDisplay(t.rangeMiles).toStringAsFixed(0),
+                  )
+                : (metric ? l10n.rangeUnknownKmLabel : l10n.rangeUnknownLabel),
             48,
             _gold,
           ),
@@ -450,7 +544,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           left: _w / 2 - 50 - 90,
           bottom: 15,
           width: 180,
-          child: _label('Off-road ABS', 24, _cyan),
+          child: _label(l10n.offRoadAbs, 24, _cyan),
         ),
         Positioned(
           left: _w / 2 + 100 - 35,
@@ -469,7 +563,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           bottom: 15,
           width: 80,
           child: _label(
-            'CAN',
+            l10n.canLabel,
             24,
             live && t.canActive ? _green : _yellow,
             align: TextAlign.right,
@@ -481,9 +575,9 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           left: 8,
           top: 6,
           child: _label(
-            ble.status == BleStatus.scanning && ble.scanInfo.isNotEmpty
-                ? '${_statusText(ble.status)} (${ble.scanInfo})'
-                : _statusText(ble.status),
+            ble.status == BleStatus.scanning && ble.scanSeen > 0
+                ? l10n.bleScanningWithCount(ble.scanSeen)
+                : _statusText(l10n, ble.status),
             14,
             live ? _green : _yellow,
           ),
@@ -492,7 +586,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     );
   }
 
-  Widget _fuelBar(int percent) {
+  Widget _fuelBar(int percent, AppLocalizations l10n) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF17354B),
@@ -515,38 +609,44 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
               ),
             ),
           ),
-          _label('$percent%', 24, _cyan),
+          _label(l10n.fuelPercent(percent), 24, _cyan),
         ],
       ),
     );
   }
 
-  Widget _fuelMarkers() {
-    const marks = ['E', '1/4', '1/2', '3/4', 'F'];
+  Widget _fuelMarkers(AppLocalizations l10n) {
+    final marks = [
+      l10n.fuelMarkerEmpty,
+      l10n.fuelMarkerQuarter,
+      l10n.fuelMarkerHalf,
+      l10n.fuelMarkerThreeQuarter,
+      l10n.fuelMarkerFull,
+    ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [for (final m in marks) _label(m, 24, _cyan)],
     );
   }
 
-  Widget _resetButton(bool enabled) {
+  Widget _resetButton(bool enabled, AppLocalizations l10n) {
     return Material(
       color: const Color(0xFF2196F3),
       borderRadius: BorderRadius.circular(4),
       child: InkWell(
         borderRadius: BorderRadius.circular(4),
         onTap: enabled ? widget.ble.resetFuel : null,
-        child: Center(child: _label('Reset', 24, _cyan)),
+        child: Center(child: _label(l10n.reset, 24, _cyan)),
       ),
     );
   }
 
-  static String _statusText(BleStatus s) => switch (s) {
-    BleStatus.idle => 'BLE idle',
-    BleStatus.needPermission => 'BLE: permission needed',
-    BleStatus.bluetoothOff => 'BLE: Bluetooth off',
-    BleStatus.scanning => 'BLE: searching...',
-    BleStatus.connecting => 'BLE: connecting...',
-    BleStatus.connected => 'BLE: connected',
+  static String _statusText(AppLocalizations l10n, BleStatus s) => switch (s) {
+    BleStatus.idle => l10n.bleIdle,
+    BleStatus.needPermission => l10n.blePermissionNeeded,
+    BleStatus.bluetoothOff => l10n.bleBluetoothOff,
+    BleStatus.scanning => l10n.bleScanning,
+    BleStatus.connecting => l10n.bleConnecting,
+    BleStatus.connected => l10n.bleConnected,
   };
 }

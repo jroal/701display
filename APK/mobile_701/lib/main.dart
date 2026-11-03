@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'ble_client.dart';
 import 'dashboard.dart';
+import 'l10n/app_localizations.dart';
 import 'range_overlay.dart';
 
 /// Entry point of the floating range overlay's Flutter engine. The plugin looks
@@ -12,6 +13,8 @@ void overlayMain() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Material(color: Colors.transparent, child: RangeOverlayView()),
     ),
   );
@@ -53,7 +56,9 @@ class _Mobile701AppState extends State<Mobile701App> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mobile 701',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true),
       home: Dashboard(ble: _ble),

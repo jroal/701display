@@ -1,12 +1,14 @@
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 
 // BLE GATT interface between the ESP32 display and the Mobile_701 Android app.
 // Full protocol description: Docs/BLE_Protocol.md
 //
 // Service  : 7a010000-701d-4a5e-9f3b-0701d15b1e00
 //  TELEMETRY (read|notify) : 12-byte little-endian packet, see BleSnapshot / ble_telemetry_pack()
-//  COMMAND   (write)       : 1 byte, 0x01 = reset fuel (same as the on-screen Reset button)
+//  COMMAND   (write)       : command byte (+ payload), 0x01 = reset fuel (same as the on-screen Reset button),
+//                            0x04 + u16 LE (0.01 L) = add fuel
 //  INFO      (read)        : ASCII "fw=<version>;proto=<n>;build=<variant>"
 
 #define BLE_DEVICE_NAME          "Husky701"
@@ -21,10 +23,11 @@
 // Telemetry.maxProtocolVersion. Telemetry byte 0 carries this value.
 //  1 = initial 12-byte telemetry + commands 0x01-0x03
 //  2 = adds read-only INFO characteristic (firmware version, build variant)
-#define BLE_PROTOCOL_VERSION     2
+//  3 = adds command 0x04 (add fuel, u16 payload in 0.01 L)
+#define BLE_PROTOCOL_VERSION     3
 
 // Firmware version: increment on every release of either build variant.
-#define FIRMWARE_VERSION         "1.0.0"
+#define FIRMWARE_VERSION         "1.1.0"
 #ifdef HEADLESS_BUILD
 #define FIRMWARE_VARIANT         "headless"
 #else
@@ -35,6 +38,7 @@
 #define BLE_CMD_RESET_FUEL       0x01
 #define BLE_CMD_OFFROAD_ABS_ON   0x02
 #define BLE_CMD_OFFROAD_ABS_OFF  0x03
+#define BLE_CMD_ADD_FUEL         0x04
 
 // Values exactly as the display UI consumes them (metric units, converted by the app).
 struct BleSnapshot {
@@ -51,7 +55,7 @@ struct BleSnapshot {
 };
 
 typedef void (*BleSnapshotFn)(BleSnapshot &out);
-typedef void (*BleCommandFn)(uint8_t command);
+typedef void (*BleCommandFn)(uint8_t command, const uint8_t *payload, size_t length);
 
 void ble_telemetry_pack(const BleSnapshot &s, uint8_t out[BLE_PACKET_SIZE]);
 

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mobile 701</string>
+    <string name="overlay_notification_title">701 Display</string>
+    <string name="overlay_notification_content">Showing fuel range</string>
+
+    <!-- Settings and About -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_tooltip">Settings</string>
+    <string name="about_title">About</string>
+    <string name="close">Close</string>
+    <string name="keep_display_on">Keep display ON while using</string>
+    <string name="show_range_overlay">Show fuel range over other apps</string>
+    <string name="show_range_overlay_hint">Floating window while this app is in the background</string>
+    <string name="display_to_connect_to">701 display to connect to</string>
+    <string name="any_display">Any (first one found)</string>
+    <string name="saved_display">Saved display</string>
+    <string name="not_in_range">Not in range</string>
+    <string name="device_details">%1$s  |  %2$d dBm</string>
+    <string name="device_details_connected">%1$s  |  %2$d dBm  |  connected</string>
+    <string name="about_row">%1$s: %2$s</string>
+    <string name="about_app_version">App version</string>
+    <string name="about_app_protocol">App BLE protocol</string>
+    <string name="about_display_firmware">Display firmware</string>
+    <string name="about_display_build">Display build</string>
+    <string name="about_display_protocol">Display BLE protocol</string>
+    <string name="about_unknown">unknown</string>
+    <string name="about_older_than_firmware">older than 1.0.0</string>
+    <string name="about_connect_to_see_versions">Connect to a display to see its versions.</string>
+
+    <!-- Dashboard -->
+    <string name="fuel_gallons">FUEL: %1$s gal</string>
+    <string name="temp_fahrenheit">TEMP: %1$s F</string>
+    <string name="gear_neutral">GEAR: N</string>
+    <string name="gear_number">GEAR: %1$d</string>
+    <string name="rpm_value">%1$d RPM</string>
+    <string name="economy">ECON: %1$s</string>
+    <string name="range_miles_label">RANGE: %1$s mi</string>
+    <string name="range_unknown_label">RANGE: -- mi</string>
+    <string name="range_miles_short">%1$s mi</string>
+    <string name="range_unknown_short">-- mi</string>
+    <string name="range_title">RANGE</string>
+    <string name="abs_off">ABS: OFF</string>
+    <string name="abs_off_road">ABS: OFF-Road</string>
+    <string name="abs_on">ABS: ON</string>
+    <string name="stand_down">STAND: DOWN</string>
+    <string name="stand_up">STAND: UP</string>
+    <string name="stand_unknown">STAND: --</string>
+    <string name="off_road_abs">Off-road ABS</string>
+    <string name="can_label">CAN</string>
+    <string name="fuel_percent">%1$d%%</string>
+    <string name="fuel_marker_empty">E</string>
+    <string name="fuel_marker_quarter">1/4</string>
+    <string name="fuel_marker_half">1/2</string>
+    <string name="fuel_marker_three_quarter">3/4</string>
+    <string name="fuel_marker_full">F</string>
+    <string name="reset">Reset</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Add fuel -->
+    <string name="add_fuel_title">Add fuel</string>
+    <string name="add_fuel_prompt">Fuel to add</string>
+    <string name="add_fuel_amount_liters">%1$s L</string>
+    <string name="add_fuel_amount_gallons">%1$s gal</string>
+    <string name="add_fuel_new_total">New total: %1$s</string>
+    <string name="add_fuel_confirm">Add</string>
+    <string name="add_fuel_tank_full">The tank is full.</string>
+    <string name="add_fuel_not_connected">Connect to a display to add fuel.</string>
+    <string name="add_fuel_unsupported">This display\'s firmware does not support adding fuel. Update it to version 1.1.0 or later.</string>
+
+    <!-- Units -->
+    <string name="units_title">Units</string>
+    <string name="units_imperial">English (mi, gal, °F)</string>
+    <string name="units_metric">Metric (km, L, °C)</string>
+    <string name="fuel_liters">FUEL: %1$s L</string>
+    <string name="temp_celsius">TEMP: %1$s °C</string>
+    <string name="economy_metric">ECON: %1$s L/100km</string>
+    <string name="range_km_label">RANGE: %1$s km</string>
+    <string name="range_km_short">%1$s km</string>
+    <string name="range_unknown_km_label">RANGE: -- km</string>
+    <string name="range_unknown_km_short">-- km</string>
+
+    <!-- Bluetooth status -->
+    <string name="ble_idle">BLE idle</string>
+    <string name="ble_permission_needed">BLE: permission needed</string>
+    <string name="ble_bluetooth_off">BLE: Bluetooth off</string>
+    <string name="ble_scanning">BLE: searching...</string>
+    <string name="ble_connecting">BLE: connecting...</string>
+    <string name="ble_connected">BLE: connected</string>
+    <plurals name="ble_scanning_with_count">
+        <item quantity="one">BLE: searching... (%1$d device seen)</item>
+        <item quantity="other">BLE: searching... (%1$d devices seen)</item>
+    </plurals>
+</resources>

@@ -55,7 +55,9 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) override {
         if (commandFn == nullptr) return;
         auto value = c->getValue();
-        if (value.length() > 0) commandFn((uint8_t)value[0]);
+        if (value.length() > 0) {
+            commandFn((uint8_t)value[0], (const uint8_t *)value.c_str() + 1, value.length() - 1);
+        }
     }
 };
 

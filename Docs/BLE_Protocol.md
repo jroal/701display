@@ -19,6 +19,7 @@ The firmware version (`FIRMWARE_VERSION`, same header; shared by the `43b` and `
 |----------|--------|
 | 1 | Initial 12-byte telemetry; commands 0x01-0x03 |
 | 2 | Adds Info characteristic; telemetry layout unchanged |
+| 3 | Adds command `0x04` (add fuel); telemetry layout unchanged |
 
 The Info value is ASCII `fw=<firmware>;proto=<protocol>;build=<43b|headless>`. The app shows it, with its own version, under Settings → About. The 43b display shows firmware and protocol versions when the CAN label is tapped; the headless build relies on the app.
 
@@ -37,13 +38,14 @@ The Info value is ASCII `fw=<firmware>;proto=<protocol>;build=<43b|headless>`. T
 
 The app derives gallons, °F and range (`gallons × MPG`) with the same formulas as the display. The app has no clock.
 
-## Commands (1 byte)
+## Commands (1 command byte, optional payload)
 
 | Value | Action |
 |-------|--------|
 | `0x01` | Reset fuel (same as the on-screen Reset button) |
 | `0x02` | Request off-road ABS (saved in ESP32 NVM; takes effect on the next key cycle) |
 | `0x03` | Clear the off-road ABS request |
+| `0x04` + u16 | Add fuel (protocol 3+). Payload is little-endian, 0.01 L. The ESP32 clamps it to tank capacity (13 L) minus fuel remaining, adds it to the remaining fuel (without changing the MPG basis) and stores it in NVM. A reset (`0x01`) clears it. |
 
 Code: `src/ble_telemetry.{h,cpp}` (firmware), `APK/mobile_701/lib/{telemetry,ble_client,dashboard}.dart` (app).
 
@@ -53,5 +55,6 @@ Code: `src/ble_telemetry.{h,cpp}` (firmware), `APK/mobile_701/lib/{telemetry,ble
 |--------------|----------------|------------------------|
 | 1 | Earlier firmware (firmware version not recorded) | `1.0.4+4`; `1.1.0+5` |
 | 2 | `1.0.0` (`43b` or `headless`) | `1.1.0+5` |
+| 3 | `1.1.0` (`43b` or `headless`) | `1.2.0+6` (add fuel needs protocol 3) |
 
-App `1.0.4+4` accepts protocol 1 only. App `1.1.0+5` accepts protocols 1 through 2, so it works with both firmware generations.
+App `1.0.4+4` accepts protocol 1 only. App `1.2.0+6` accepts protocols 1 through 3; the add-fuel dialog is available only with protocol 3 firmware.

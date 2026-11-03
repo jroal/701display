@@ -2,10 +2,14 @@
 /// and mirrors ble_telemetry_pack() in the ESP32 firmware.
 class Telemetry {
   static const int packetSize = 12;
+
   /// Highest BLE protocol version this app understands (see Docs/BLE_Protocol.md).
   /// Versions 1..protocolVersion share the same telemetry packet layout.
-  static const int protocolVersion = 2;
+  static const int protocolVersion = 3;
   static const int minProtocolVersion = 1;
+
+  /// Must match TOTAL_FUEL_CAPACITY in the firmware.
+  static const double tankCapacityLiters = 13.0;
 
   // Must match TOTAL_FUEL_CAPACITY / unit conversions in the firmware UI.
   static const double litersToGallons = 0.264172;

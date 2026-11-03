@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'l10n/app_localizations.dart';
+
 const rangeOverlayKey = 'range_overlay_enabled';
 const _appPackage = 'com.jroal.mobile_701_display';
 
@@ -55,7 +57,10 @@ class RangeOverlay {
     }
   }
 
-  Future<void> show() async {
+  Future<void> show({
+    required String notificationTitle,
+    required String notificationContent,
+  }) async {
     try {
       if (await FlutterOverlayWindow.isActive()) return;
       _lastPayload = '';
@@ -72,8 +77,8 @@ class RangeOverlay {
         enableDrag: true,
         flag: OverlayFlag.defaultFlag,
         visibility: NotificationVisibility.visibilitySecret,
-        overlayTitle: '701 Display',
-        overlayContent: 'Showing fuel range',
+        overlayTitle: notificationTitle,
+        overlayContent: notificationContent,
       );
     } catch (e) {
       debugPrint('Overlay show failed: $e');
@@ -110,7 +115,7 @@ class RangeOverlayView extends StatefulWidget {
 
 class _RangeOverlayViewState extends State<RangeOverlayView> {
   StreamSubscription<dynamic>? _sub;
-  String _range = '-- mi';
+  String? _range;
   bool _live = false;
 
   @override
@@ -134,6 +139,7 @@ class _RangeOverlayViewState extends State<RangeOverlayView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final color = _live ? const Color(0xFFFFD166) : Colors.white38;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -151,9 +157,9 @@ class _RangeOverlayViewState extends State<RangeOverlayView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'RANGE',
-                style: TextStyle(
+              Text(
+                l10n.rangeTitle,
+                style: const TextStyle(
                   color: Color(0xFF65D6FF),
                   fontSize: 13,
                   height: 1.0,
@@ -161,7 +167,7 @@ class _RangeOverlayViewState extends State<RangeOverlayView> {
                 ),
               ),
               Text(
-                _range,
+                _range ?? l10n.rangeUnknownShort,
                 style: TextStyle(
                   color: color,
                   fontSize: 34,

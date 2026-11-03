@@ -72,6 +72,7 @@ class BleClient extends ChangeNotifier {
   static const int cmdResetFuel = 0x01;
   static const int cmdOffroadAbsOn = 0x02;
   static const int cmdOffroadAbsOff = 0x03;
+  static const int cmdAddFuel = 0x04;
 
   BleStatus status = BleStatus.idle;
   Telemetry telemetry = const Telemetry();
@@ -79,6 +80,7 @@ class BleClient extends ChangeNotifier {
   /// Firmware details read from the display's INFO characteristic; null when not
   /// connected. Fields are null for firmware older than protocol 2.
   DisplayInfo? displayInfo;
+
   /// Protocol version seen in the last telemetry packet.
   int? protocolVersion;
 
@@ -144,8 +146,8 @@ class BleClient extends ChangeNotifier {
     return true;
   }
 
-  /// Short summary of the last scan, shown in the UI to diagnose discovery problems.
-  String scanInfo = '';
+  /// Number of devices seen in the last scan, shown in the UI to diagnose discovery problems.
+  int scanSeen = 0;
 
   static const _deviceKey = 'ble_device_id';
 
@@ -206,7 +208,7 @@ class BleClient extends ChangeNotifier {
     var seen = 0;
     final sub = FlutterBluePlus.onScanResults.listen((results) {
       seen = results.length;
-      scanInfo = '$seen devices seen';
+      scanSeen = seen;
       final now = DateTime.now();
       for (final r in results) {
         if (!_isTarget(r)) continue;
@@ -317,6 +319,15 @@ class BleClient extends ChangeNotifier {
     final c = _commandChar;
     if (c == null) return;
     await c.write([cmdResetFuel]);
+  }
+
+  /// Adds [liters] to the display's remaining fuel (protocol 3+); the display
+  /// clamps the result to the tank capacity and the next telemetry carries it back.
+  Future<void> addFuel(double liters) async {
+    final c = _commandChar;
+    if (c == null) return;
+    final centiLiters = (liters * 100).round().clamp(0, 0xFFFF);
+    await c.write([cmdAddFuel, centiLiters & 0xFF, centiLiters >> 8]);
   }
 
   /// Sets the persistent off-road ABS request stored on the ESP32 (effective next key cycle).

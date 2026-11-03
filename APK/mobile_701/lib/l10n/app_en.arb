@@ -1,0 +1,230 @@
+{
+  "@@locale": "en",
+  "appName": "Mobile 701",
+  "overlayNotificationTitle": "701 Display",
+  "overlayNotificationContent": "Showing fuel range",
+  "settingsTitle": "Settings",
+  "settingsTooltip": "Settings",
+  "aboutTitle": "About",
+  "close": "Close",
+  "keepDisplayOn": "Keep display ON while using",
+  "showRangeOverlay": "Show fuel range over other apps",
+  "showRangeOverlayHint": "Floating window while this app is in the background",
+  "displayToConnectTo": "701 display to connect to",
+  "anyDisplay": "Any (first one found)",
+  "savedDisplay": "Saved display",
+  "notInRange": "Not in range",
+  "deviceDetails": "{arg1}  |  {arg2} dBm",
+  "@deviceDetails": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      },
+      "arg2": {
+        "type": "int"
+      }
+    }
+  },
+  "deviceDetailsConnected": "{arg1}  |  {arg2} dBm  |  connected",
+  "@deviceDetailsConnected": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      },
+      "arg2": {
+        "type": "int"
+      }
+    }
+  },
+  "aboutRow": "{arg1}: {arg2}",
+  "@aboutRow": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      },
+      "arg2": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutAppVersion": "App version",
+  "aboutAppProtocol": "App BLE protocol",
+  "aboutDisplayFirmware": "Display firmware",
+  "aboutDisplayBuild": "Display build",
+  "aboutDisplayProtocol": "Display BLE protocol",
+  "aboutUnknown": "unknown",
+  "aboutOlderThanFirmware": "older than 1.0.0",
+  "aboutConnectToSeeVersions": "Connect to a display to see its versions.",
+  "fuelGallons": "FUEL: {arg1} gal",
+  "@fuelGallons": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "tempFahrenheit": "TEMP: {arg1} F",
+  "@tempFahrenheit": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "gearNeutral": "GEAR: N",
+  "gearNumber": "GEAR: {arg1}",
+  "@gearNumber": {
+    "placeholders": {
+      "arg1": {
+        "type": "int"
+      }
+    }
+  },
+  "rpmValue": "{arg1} RPM",
+  "@rpmValue": {
+    "placeholders": {
+      "arg1": {
+        "type": "int"
+      }
+    }
+  },
+  "economy": "ECON: {arg1}",
+  "@economy": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeMilesLabel": "RANGE: {arg1} mi",
+  "@rangeMilesLabel": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeUnknownLabel": "RANGE: -- mi",
+  "rangeMilesShort": "{arg1} mi",
+  "@rangeMilesShort": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeUnknownShort": "-- mi",
+  "rangeTitle": "RANGE",
+  "absOff": "ABS: OFF",
+  "absOffRoad": "ABS: OFF-Road",
+  "absOn": "ABS: ON",
+  "standDown": "STAND: DOWN",
+  "standUp": "STAND: UP",
+  "standUnknown": "STAND: --",
+  "offRoadAbs": "Off-road ABS",
+  "canLabel": "CAN",
+  "fuelPercent": "{arg1}%",
+  "@fuelPercent": {
+    "placeholders": {
+      "arg1": {
+        "type": "int"
+      }
+    }
+  },
+  "fuelMarkerEmpty": "E",
+  "fuelMarkerQuarter": "1/4",
+  "fuelMarkerHalf": "1/2",
+  "fuelMarkerThreeQuarter": "3/4",
+  "fuelMarkerFull": "F",
+  "reset": "Reset",
+  "cancel": "Cancel",
+  "addFuelTitle": "Add fuel",
+  "addFuelPrompt": "Fuel to add",
+  "addFuelAmountLiters": "{arg1} L",
+  "@addFuelAmountLiters": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "addFuelAmountGallons": "{arg1} gal",
+  "@addFuelAmountGallons": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "addFuelNewTotal": "New total: {arg1}",
+  "@addFuelNewTotal": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "addFuelConfirm": "Add",
+  "addFuelTankFull": "The tank is full.",
+  "addFuelNotConnected": "Connect to a display to add fuel.",
+  "addFuelUnsupported": "This display's firmware does not support adding fuel. Update it to version 1.1.0 or later.",
+  "unitsTitle": "Units",
+  "unitsImperial": "English (mi, gal, °F)",
+  "unitsMetric": "Metric (km, L, °C)",
+  "fuelLiters": "FUEL: {arg1} L",
+  "@fuelLiters": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "tempCelsius": "TEMP: {arg1} °C",
+  "@tempCelsius": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "economyMetric": "ECON: {arg1} L/100km",
+  "@economyMetric": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeKmLabel": "RANGE: {arg1} km",
+  "@rangeKmLabel": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeKmShort": "{arg1} km",
+  "@rangeKmShort": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "rangeUnknownKmLabel": "RANGE: -- km",
+  "rangeUnknownKmShort": "-- km",
+  "bleIdle": "BLE idle",
+  "blePermissionNeeded": "BLE: permission needed",
+  "bleBluetoothOff": "BLE: Bluetooth off",
+  "bleScanning": "BLE: searching...",
+  "bleConnecting": "BLE: connecting...",
+  "bleConnected": "BLE: connected",
+  "bleScanningWithCount": "{arg1, plural, one{BLE: searching... ({arg1} device seen)} other{BLE: searching... ({arg1} devices seen)}}",
+  "@bleScanningWithCount": {
+    "placeholders": {
+      "arg1": {
+        "type": "int"
+      }
+    }
+  }
+}
