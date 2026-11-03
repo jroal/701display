@@ -9,8 +9,8 @@ import 'units.dart';
 /// Minimum display firmware protocol that understands the add-fuel command.
 const _minAddFuelProtocol = 3;
 
-/// Picker step: 0.1 L in metric, 0.05 gal in English units.
-double _stepIn(UnitSystem units) => units == UnitSystem.metric ? 0.1 : 0.05;
+/// Picker step: 0.1 L in metric, 0.1 gal in English units.
+double _stepIn(UnitSystem units) => 0.1;
 
 /// Lets the user pick an amount of fuel to add, limited to the tank's free
 /// space, and sends it to the display when confirmed.
@@ -42,7 +42,7 @@ Future<void> showAddFuelDialog(
 
   String amount(double v) => metric
       ? l10n.addFuelAmountLiters(v.toStringAsFixed(1))
-      : l10n.addFuelAmountGallons(v.toStringAsFixed(2));
+      : l10n.addFuelAmountGallons(v.toStringAsFixed(1));
 
   var selected = 1; // number of steps to add
   final controller = FixedExtentScrollController();
