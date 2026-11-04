@@ -44,8 +44,11 @@ Future<void> showAddFuelDialog(
       ? l10n.addFuelAmountLiters(v.toStringAsFixed(1))
       : l10n.addFuelAmountGallons(v.toStringAsFixed(1));
 
-  var selected = 1; // number of steps to add
-  final controller = FixedExtentScrollController();
+  final initialSteps = (units.gallonsToDisplay(1) / step).round();
+  var selected = maxSteps < 1
+      ? 1
+      : (initialSteps > maxSteps ? maxSteps : initialSteps);
+  final controller = FixedExtentScrollController(initialItem: selected - 1);
   final addedL = await showDialog<double>(
     context: context,
     builder: (ctx) => StatefulBuilder(
