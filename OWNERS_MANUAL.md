@@ -216,4 +216,4 @@ This feature is primarily used for development and troubleshooting. The headless
 | Time is wrong | Tap the date/time on the display and set it. |
 | Version mismatch | Compare the app and display **About** dialogs. Update whichever is older. |
 
-For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md).
+For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md). Github repo is here: [https://github.com/jroal/701display](https://github.com/jroal/701display).
