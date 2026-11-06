@@ -206,11 +206,11 @@ This feature is primarily used for development and troubleshooting. The headless
 
 | Symptom | Check |
 |---|---|
-| `CAN` stays yellow | Key is ON? CAN High/Low wired correctly and not swapped? ABS ECU working? Power and ground solid? |
-| App says searching, never connects | Bluetooth on? Nearby-devices permission granted? ESP32 powered (key ON)? Close other apps connected to the display (only one BLE client at a time). |
+| `CAN` stays yellow | Key is ON? CAN High/Low wired correctly and not swapped? ABS ECU working? Power and ground solid? Kill switch ON? |
+| App says searching, never connects | Bluetooth on? Nearby-devices permission granted? ESP32 powered (key ON and kill switch in run)? Close other apps connected to the display (only one BLE client at a time). Is the ESP32 device powered (LED ON)?|
 | Wrong display chosen | Settings → "701 display to connect to" → pick the right `Husky701-XXXXXX`. |
 | Fuel gauge wrong | Press **Reset** only at a full tank. Re-fill and reset to recalibrate. |
-| Off-road ABS does not engage | Turn the switch on, then key off, wait a few seconds, and then key back on. The bike must be stopped. If a KTM ABS dongle or Veridian is already sending the request, the display deliberately does not send; enable it through the other device instead. |
+| Off-road ABS does not engage | Turn the switch on, then key off, wait a few seconds, and then key back on. The bike must be stopped. If an ABS dongle or Veridian Cruise with ABS add-on is already sending the request, the display deliberately does not send; enable it through the other device instead. |
 | ABS shows ON after switching ABS off with the button | Expected, see the ABS note in section 7. |
 | No SD logs | Card inserted before power-up? Reboot with the card in. Clock set? |
 | Time is wrong | Tap the date/time on the display and set it. |
