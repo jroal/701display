@@ -134,6 +134,8 @@ The bike has no direct fuel-level signal on CAN, so the display **estimates** it
 - The consumed fuel and distance are saved to flash when the engine stops, so the estimate survives key-off and power loss.
 - **ECON** and **RANGE** are derived from that fuel use and distance.
 
+The distance estimate has several factors leading to uncertainty and error. This makes the MPG and range estimates also have error. I have found these estimates tend to be to the lower side (less MPG and range than actual). This is better than error the other way. 
+
 Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full before clicking reset. On the Android app, the Reset button works the same way as long as it has an active BLE connection (BLE connected and green at the top, it is disabled while not connected).
 
 Starting with version 6 (1.2.0) of the Android app (and associated ESP32 firmware and BLE protocol) the user can add fuel to the remaining fuel. This is done by clicking the remaining fuel label (top right). An add fuel dialog appears where the user can select the amount to add to the tank. Once selected, click the add button. This is useful when you carry additional fuel that you add to the tank on the ride. It is best to run the fuel down more than the fuel can capacity you will add. For instance, if you have a 1 gallon gas can make sure there is more than 1 gallon of open volume in the tank (meaning the remaining fuel is less than 2.4 gallons) before adding the fuel. 
