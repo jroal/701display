@@ -18,6 +18,7 @@ Secondary display and virtual fuel computer for the Husqvarna 701 Enduro (Euro 5
 10. [Versions and compatibility](#10-versions-and-compatibility)
 11. [SD card logging (display build)](#11-sd-card-logging-display-build)
 12. [Troubleshooting](#12-troubleshooting)
+13. [Disclaimer](#13-disclaimer)
 
 ---
 
@@ -250,7 +251,7 @@ This feature is primarily used for development and troubleshooting. The headless
 
 For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md). Github repo is here: [https://github.com/jroal/701display](https://github.com/jroal/701display).
 
-# DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+## 13. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
 
 IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
 
