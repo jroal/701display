@@ -64,6 +64,7 @@ Headless version (end user)
 | Sumitomo HM 090 OBD Connector set | https://www.amazon.com/dp/B0FCLJP2ZY |
 | Shielded, double twisted pair wiring | https://www.amazon.com/dp/B0FHPGN8M7 |
 
+[Back to Table of Contents](#contents)
 
 ## 3. Wiring
 
@@ -83,6 +84,8 @@ You can make a T harness that leaves an OBD plug available for a scan tool or ot
 The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
 
 > Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up. Use a voltmeter to confirm power and ground is around 12VDC (positive). A high-impedance (digital) voltmeter can also be used to confirm CAN hi and low by connecting the voltmeter leads to the 2 CAN wires. It should read about 2.5VDC positive. If it shows negative then the positive lead is on the CAN low wire. 
+
+[Back to Table of Contents](#contents)
 
 ## 4. Installing the firmware
 
@@ -105,12 +108,16 @@ The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.am
    In VS Code you can also use **Terminal → Run Task → Build/Upload Headless Hardware**.
 3. Do **not** use the `waveshare_esp32s3_43b_capture` environment for normal use. It is a diagnostic build that records every CAN frame.
 
+[Back to Table of Contents](#contents)
+
 ## 5. Installing the Android app
 
 - **Google Play:** install it from the [Play Store listing](https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display).
 - **Sideload:** build with `flutter build apk --release` from `APK\mobile_701` and install the resulting `app-release.apk`.
 
 On first launch, allow the Bluetooth ("Nearby devices") permission when asked. If you enable the fuel-range overlay, you will also be asked for the "display over other apps" permission.
+
+[Back to Table of Contents](#contents)
 
 ## 6. First-time setup
 
@@ -120,6 +127,8 @@ On first launch, allow the Bluetooth ("Nearby devices") permission when asked. I
 4. **Fill the tank, then press Reset** (section 8.1). The fuel gauge is an estimate, so it must be calibrated at every fill-up.
 5. **Pair the app:** open the Android app. It scans for a display named `Husky701-XXXXXX`. If more than one is nearby, open **Settings** (gear icon) and pick yours under "701 display to connect to". You should always select your specific ESP32 to connect to otherwise you risk connecting to another nearby ESP32. Start by letting it connect to any while your bike is the only one with the ESP32 on it in the area (within 200 feet or so). Then find which one it connected to and select that in the list. Once selected it will always look for only that ESP32. 
 6. Confirm the app's top-left status reads `BLE: connected`.
+
+[Back to Table of Contents](#contents)
 
 ## 7. Display screen reference
 
@@ -145,6 +154,8 @@ The 4.3" display and the Android app show the same layout.
 > **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Always refer to the bike's factory ABS indicator to ensure ABS state.
 
 > The Android app allows for selecting English or metric units.
+
+[Back to Table of Contents](#contents)
 
 ## 8. Functions and settings
 
@@ -197,6 +208,8 @@ The Android app does not show the clock.
 
 Tap the **CAN** label (bottom right). The **About** dialog shows the firmware version and build, and the BLE protocol version. Tap the close button to dismiss.
 
+[Back to Table of Contents](#contents)
+
 ## 9. Android app settings
 
 Tap the **gear icon** at the top right to open **Settings**:
@@ -213,6 +226,8 @@ Use this app as the only display for the **headless** build, and as the place to
 
 Video demonstration of Android app settings: [https://youtu.be/zHuzSz7Xirc](https://youtu.be/zHuzSz7Xirc)
 
+[Back to Table of Contents](#contents)
+
 ## 10. Versions and compatibility
 
 Three versions are tracked so the parts work together:
@@ -222,6 +237,8 @@ Three versions are tracked so the parts work together:
 - **Android App version** (for example `1.1.0+5`).
 
 The Android app accepts protocol versions 1 to 2. If the ESP32 firmware reports a protocol version the app does not support, update the app (or the firmware) so the versions are compatible. If you have issues you can check the **About** dialogs after updating either side.
+
+[Back to Table of Contents](#contents)
 
 ## 11. SD card logging (ESP32 with display only)
 
@@ -234,6 +251,8 @@ If you are using the ESP32 with the display you can also capture data and error 
 - If you insert a card later, reboot to enable logging.
 
 This feature is primarily used for development and troubleshooting. The headless ESP32 has no SD card slot or data logging capability. 
+
+[Back to Table of Contents](#contents)
 
 ## 12. Troubleshooting
 
@@ -250,6 +269,8 @@ This feature is primarily used for development and troubleshooting. The headless
 | Version mismatch | Compare the app and display **About** dialogs. Update whichever is older. |
 
 For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md). Github repo is here: [https://github.com/jroal/701display](https://github.com/jroal/701display).
+
+[Back to Table of Contents](#contents)
 
 ## 13. Disclaimer of Warranty and Limitation of Liability
 
