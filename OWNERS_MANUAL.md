@@ -18,7 +18,7 @@ Secondary display and virtual fuel computer for the Husqvarna 701 Enduro (Euro 5
 10. [Versions and compatibility](#10-versions-and-compatibility)
 11. [SD card logging (display build)](#11-sd-card-logging-display-build)
 12. [Troubleshooting](#12-troubleshooting)
-13. [Disclaimer](#13-disclaimer)
+13. [Disclaimer](#13-disclaimer-of-warranty-&-limitation-of-liability)
 
 ---
 
