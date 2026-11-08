@@ -53,6 +53,8 @@ Google Play Store Listing: [https://play.google.com/store/apps/details?id=com.jr
 
 The changelog is here: [https://jroal.github.io/701display/changelog.html](https://jroal.github.io/701display/changelog.html)
 
+I have a video playlist showing demos of various features of this project here: [https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg](https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg)
+
 # DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
 
 IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
