@@ -158,11 +158,15 @@ How it works and safety rules:
 - The switch also works from the Android app (when connected). The display and app stay in sync.
 - Always confirm ABS mode by observing the ABS light next to the motorcycle factory display. See the motorcycle owners manual for details. The motorcycle starts with the ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road ABS mode is indicated by the light flashing slowly (a very brief flash once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
 
+ABS mode switching demo: [https://youtu.be/ZTQ_GDK-LSc](https://youtu.be/ZTQ_GDK-LSc)
+
 ### 8.3 Setting the date and time (ESP32 with display only)
 
 Tap the date/time on the display. A **Set date & time** panel appears with +/− steppers for year, month, day, hour and minute. Tap **Set** to save to the real-time clock, or **Cancel**. An "Invalid date or time" message appears if the values are not a real date. The clock requires a coin cell backup battery installed on the board: it is needed to keep the ESP32 clock running while power is off, and the data logs depend on that clock for their timestamps and file names. Without the battery the clock must be set again after each power loss.
 
 The Android app does not show the clock.
+
+
 
 ### 8.4 About / version information (ESP32 with display only)
 
