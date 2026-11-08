@@ -129,7 +129,7 @@ The 4.3" display and the Android app show the same layout.
 | **Fuel bar** and `E 1/4 1/2 3/4 F` scale | Top left | Estimated fuel remaining as a percent of the 13 L usable capacity. The percent is shown inside the bar. |
 | **FUEL: x.xx gal** | Top right | Estimated fuel remaining in US gallons. |
 | **Reset** button | Top centre | Tap after filling the tank (section 8.1). |
-| Date / time | Top right, under FUEL | Real-time clock (display build). Tap to set. |
+| **Date / time** | Top right, under FUEL | Real-time clock (display build). Tap to set. |
 | **TEMP: xx F** | Left, middle | Engine coolant temperature in °F. |
 | **GEAR: n** | Right, middle | Current gear (`N` = neutral). |
 | **RPM bar** and `xxxx RPM` | Centre | Engine speed. Bar colour: green below 8000, yellow 8000–9000, red above 9000. Scale ends at 10,000. |
@@ -139,9 +139,11 @@ The 4.3" display and the Android app show the same layout.
 | **ABS: ON / OFF-Road** | Bottom left | ABS mode reported by the bike. See the note below. |
 | **Off-road ABS** switch | Bottom centre | Requests off-road ABS mode (section 8.2). |
 | **CAN** | Bottom right | Green = receiving bike CAN data. Yellow = no data. On the display build, tap it to see versions. |
-| BLE status (app only) | Top left of the app | Search/connection state of the Bluetooth link. |
+| **BLE status (app only)** | Top left of the app | Search/connection state of the Bluetooth link. |
 
 > **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Always refer to the bike's factory ABS indicator to ensure ABS state.
+
+> The Android app allows for selecting English or metric units.
 
 ## 8. Functions and settings
 
