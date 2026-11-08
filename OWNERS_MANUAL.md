@@ -186,6 +186,8 @@ Tap the **gear icon** at the top right to open **Settings**:
 
 Use this app as the only display for the **headless** build, and as the place to read its versions.
 
+Video demonstration of Android app settings: [https://youtu.be/zHuzSz7Xirc](https://youtu.be/zHuzSz7Xirc)
+
 ## 10. Versions and compatibility
 
 Three versions are tracked so the parts work together:
