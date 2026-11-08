@@ -44,6 +44,24 @@ The Android app (a phone or motorcycle tablet) shows the same dashboard as the 4
 - Android phone/tablet with Bluetooth LE and Google Play (or the ability to sideload).
 - For building the firmware yourself: Visual Studio Code with PlatformIO. For a prebuilt install, a Chromium-based browser and a USB cable.
 
+### Parts list
+
+Display version (for development)
+
+|Item|Link|
+|Waveshare ESP32-S3 4.3 Display | https://www.amazon.com/dp/B0DD6VLH1Y |
+|Sumitomo HM 090 OBD Connector set | https://www.amazon.com/dp/B0FCLJP2ZY |
+|Shielded, double twisted pair wiring | https://www.amazon.com/dp/B0FHPGN8M7 |
+| CR927 battery | https://www.amazon.com/dp/B0DDSW4SF7 |
+
+Headless version (end user)
+
+|Item|Link|
+|Waveshare ESP32-S3 CAN control board | https://www.amazon.com/waveshare-Industrial-Interfaces-Connecting-Protection/dp/B0FNCWZ3D1 |
+|Sumitomo HM 090 OBD Connector set | https://www.amazon.com/dp/B0FCLJP2ZY |
+|Shielded, double twisted pair wiring | https://www.amazon.com/dp/B0FHPGN8M7 |
+
+
 ## 3. Wiring
 
 Connect the ESP32 hardware to the OBD port:
