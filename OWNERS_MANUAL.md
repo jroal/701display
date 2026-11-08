@@ -149,12 +149,14 @@ Toggle **Off-road ABS** to have the bike start in off-road ABS mode at the next 
 3. The ABS indicator at the bottom left of the display should show **ABS: OFF-Road**.
 4. To return to normal ABS, turn the "Off-road ABS" switch **OFF** and key-cycle again. When you key back ON the ABS indicator should now show ON.
 
+The ABS module looks for this off-road mode request for a few seconds at startup. If it does not see the off-road mode request within a few seconds, the ABS will work normally (on-road mode) until key OFF. If the ABS does see the off-road mode request, it will switch to off-road mode and stay there until the next key cycle.
+
 How it works and safety rules:
 
 - The setting is saved on the ESP32 and is remembered.
 - At key-on the display sends the off-road request on the CAN bus. It **only transmits while the bike is stopped**.
 - It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
-- It stops sending if the bike moves.
+- It stops sending if the bike moves but the ABS mode will remain.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
 - Always confirm ABS mode by observing the ABS light next to the motorcycle factory display. See the motorcycle owners manual for details. The motorcycle starts with the ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road ABS mode is indicated by the light flashing slowly (a very brief flash once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
 
