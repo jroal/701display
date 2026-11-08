@@ -15,7 +15,7 @@ In November 2026 an ABS off-road mode feature was added. This feature allows the
 <img width="799" height="476" alt="ESP32_43b_Emulator" src="https://github.com/user-attachments/assets/a35310a3-be32-482c-b272-e6d41821409f" />
 
 
-See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)
+**See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)**
 
 ## CAN Hardware
 
@@ -37,7 +37,7 @@ You can run the ESP32 installer here: [https://jroal.github.io/701display/instal
 
 ### Firmware builds
 
-- `waveshare_esp32s3_43b` builds the ESP32-S3 for the display version hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
+- `waveshare_esp32s3_43b` builds the ESP32-S3 for the display version hardware [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B).
 - `waveshare_esp32s3_rs485_can` builds the headless [Waveshare ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm?sku=32154) board. It keeps all the features except it does not support an on-board display, touch controller, I2C RTC, or SD logging. 
 
 In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build the headless variant, or **Upload Headless Hardware** to flash it. PlatformIO auto-detects its serial port.
