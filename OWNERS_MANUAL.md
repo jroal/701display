@@ -281,3 +281,4 @@ IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
 
     To the maximum extent permitted by applicable law, in no event shall the authors, developers, or project contributors be liable for any direct, indirect, incidental, special, exemplary, punitive, or consequential damages (including, but not limited to, loss of use, personal injury, wrongful death, property damage, vehicle repair costs, or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this product, even if advised of the possibility of such damage.
 
+[Back to Table of Contents](#contents)
