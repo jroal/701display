@@ -55,6 +55,8 @@ The changelog is here: [https://jroal.github.io/701display/changelog.html](https
 
 I have a video playlist showing demos of various features of this project here: [https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg](https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg)
 
+If you find a defect or bug, or have an enhancement request, add an issue to the issues list: [https://github.com/jroal/701display/issues](https://github.com/jroal/701display/issues)
+
 # DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
 
 IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
