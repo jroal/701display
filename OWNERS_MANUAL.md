@@ -2,7 +2,7 @@
 
 Secondary display and virtual fuel computer for the Husqvarna 701 Enduro (Euro 5). It reads the motorcycle's CAN bus through the OBD port and shows fuel, range, economy, gear, RPM, coolant temperature, ABS mode and side-stand state.
 
-> **Safety:** This is an experimental secondary display. It does not replace the factory dash or fuel warning light. Never operate or adjust it while riding. See the disclaimer in [README.md](README.md).
+> **Safety:** This is an experimental secondary display. It does not replace the factory dash or fuel warning light. Never operate or adjust it while riding. See the disclaimer in [README.md](README.md) and below.
 
 ## Contents
 
