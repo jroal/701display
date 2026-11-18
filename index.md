@@ -2,10 +2,10 @@
 
 # Project Overview
 
-This project uses an ESP32-S3 module (either a 4.3inch Capacitive Touch LCD Development Board Type B with Case 800×480 Solution IPS Display with 2.4GHz WiFi and BLE 5 Support,32-bit LX7 Dual-core Processor (or a headless ESP32 as a secondary display for a Husqvarna 701 Enduro (Euro 5) motorcycle. Mine is a 2023 USA version. This should also work on other KTM LC4 equipped motorcycles (KTM 690, GasGas 700) with the Bosch 9.1 MP CAN bus network / Keihin ECU platform and Euro 5 OBD connector:
+This project uses an ESP32-S3 module and Android UI device as a secondary display for a Husqvarna 701 Enduro (Euro 5) motorcycle. My motorcycle is a 2023 USA version Husqvarna 701 Enduro. This should also work on other KTM LC4 equipped motorcycles (KTM 690, GasGas 700) with the Bosch 9.1 MP CAN bus network / Keihin ECU platform and Euro 5 OBD connector:
 
 - GasGas 700: Every model year made (2022+). (needs testing)
-- KTM 690: 2021 and newer. (need testing)
+- KTM 690: 2021 and newer. (needs testing)
 - Husqvarna 701: 2021 and newer. (developed and tested on this)   
 
 **The main feature of this project is the virtual fuel gauge, fuel economy, and fuel range display**. This display adds a gear indicator, RPM bar graph and display, engine coolant temperature, fuel range and fuel economy. It estimates remaining fuel by a manual reset at fill-up and then subtracting off the fuel consumed by the engine which it reads from CAN using UDS. 
@@ -15,7 +15,9 @@ In November 2026 an ABS off-road mode feature was added. This feature allows the
 <img width="799" height="476" alt="ESP32_43b_Emulator" src="https://github.com/user-attachments/assets/a35310a3-be32-482c-b272-e6d41821409f" />
 
 
-See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)
+**See the owners manual here [https://jroal.github.io/701display/OWNERS_MANUAL](https://jroal.github.io/701display/OWNERS_MANUAL)**
+
+This project could easily be expanded to include other data from the engine or ABS modules. The hardware has additional inputs for added sensors if desired. Waveshare (and others) make compatible hardware that support 2 CAN networks which can be used to add CAN IO devices. The hardware we used has RS485 networks available for additional IO. 
 
 ## CAN Hardware
 
@@ -37,14 +39,14 @@ You can run the ESP32 installer here: [https://jroal.github.io/701display/instal
 
 ### Firmware builds
 
-- `waveshare_esp32s3_43b` builds the ESP32-S3 for the display version hardware ( [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B) ).
+- `waveshare_esp32s3_43b` builds the ESP32-S3 for the display version hardware [https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B).
 - `waveshare_esp32s3_rs485_can` builds the headless [Waveshare ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm?sku=32154) board. It keeps all the features except it does not support an on-board display, touch controller, I2C RTC, or SD logging. 
 
 In VS Code, run **Terminal → Run Task → Build Headless Hardware** to build the headless variant, or **Upload Headless Hardware** to flash it. PlatformIO auto-detects its serial port.
 
 ## Android Display Application
 
-I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app. This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo. We have now tested using the headless hardware and a [Carpuride W702 Plus motorcycle tablet](https://carpuride.com/collections/motorcycle-plus-series-app-enabled/products/carpuride-w702s-plus-wireless-portable-motorcycle-stereo-plug-and-play-bm05-bracket-install-apps-built-in-gps-dual-cameras).  
+I struggled to find a single robust display that had CAN for this project. It was going to require a custom device and without committed volumes this was not a viable option. I decided to make an Android application for the display since there are already robust motorcycle tablets available on the market ([Carpuride Plus series](https://carpuride.com/collections/motorcycle-plus-series-app-enabled), Topnavi, [HugeRock](https://hugerockglobal.com/), etc.). The Android tablet or phone must have the Google Play Store on it so this app can be installed. If it does not have the Google Play Store, it would need to allow side-loading the app (APK). This way the display becomes an app on that already existing hardware. The ESP32 BLE server broadcasts the data at 20Hz which is plenty fast for a display update. I included the Android (and placeholders for Linux and iOS) app in this same repo so I could easily manage interface changes. The app is in the APK subfolder of this repo. We have now tested using the headless hardware and a [Carpuride W702 Plus motorcycle tablet](https://carpuride.com/collections/motorcycle-plus-series-app-enabled/products/carpuride-w702s-plus-wireless-portable-motorcycle-stereo-plug-and-play-bm05-bracket-install-apps-built-in-gps-dual-cameras).  
 
 <img alt="image" src="https://github.com/user-attachments/assets/f4ee32e8-76d1-41d0-8354-238553d24424" />
 
@@ -53,13 +55,17 @@ Google Play Store Listing: [https://play.google.com/store/apps/details?id=com.jr
 
 The changelog is here: [https://jroal.github.io/701display/changelog.html](https://jroal.github.io/701display/changelog.html)
 
+I have a video playlist showing demos of various features of this project here: [https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg](https://www.youtube.com/playlist?list=PLWVnSqkvN5Vg)
+
+If you find a defect or bug, or have an enhancement request, add an issue to the issues list: [https://github.com/jroal/701display/issues](https://github.com/jroal/701display/issues)
+
 # DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
 
 IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
 
 1. Provided "As-Is" Without Warranty
 
-    The Husky Display project—including all hardware schematics, firmware binaries, source code, Android applications, and documentation—is provided strictly on an "AS IS" and "AS AVAILABLE" basis, without warranties or conditions of any kind, either express or implied. This includes, but is not limited to, implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement.
+    The Husky 701 Display project—including all hardware schematics, firmware binaries, source code, Android applications, and documentation—is provided strictly on an "AS IS" and "AS AVAILABLE" basis, without warranties or conditions of any kind, either express or implied. This includes, but is not limited to, implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement.
 
 2. Informational Use Only & Primary Instrumentation
 

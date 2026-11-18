@@ -2,7 +2,7 @@
 
 Secondary display and virtual fuel computer for the Husqvarna 701 Enduro (Euro 5). It reads the motorcycle's CAN bus through the OBD port and shows fuel, range, economy, gear, RPM, coolant temperature, ABS mode and side-stand state.
 
-> **Safety:** This is an experimental secondary display. It does not replace the factory dash or fuel warning light. Never operate or adjust it while riding. See the disclaimer in [README.md](README.md).
+> **Safety:** This is an experimental secondary display. It does not replace the factory dash or fuel warning light. Never operate or adjust it while riding. See the disclaimer in [README.md](README.md) and below.
 
 ## Contents
 
@@ -18,6 +18,7 @@ Secondary display and virtual fuel computer for the Husqvarna 701 Enduro (Euro 5
 10. [Versions and compatibility](#10-versions-and-compatibility)
 11. [SD card logging (display build)](#11-sd-card-logging-display-build)
 12. [Troubleshooting](#12-troubleshooting)
+13. [Disclaimer of Warranty and Limitation of Liability](#13-disclaimer-of-warranty-and-limitation-of-liability)
 
 ---
 
@@ -44,6 +45,27 @@ The Android app (a phone or motorcycle tablet) shows the same dashboard as the 4
 - Android phone/tablet with Bluetooth LE and Google Play (or the ability to sideload).
 - For building the firmware yourself: Visual Studio Code with PlatformIO. For a prebuilt install, a Chromium-based browser and a USB cable.
 
+### Parts list
+
+Display version (for development)
+
+| Item | Link |
+|---|---|
+| Waveshare ESP32-S3 4.3 Display | [https://www.amazon.com/dp/B0DD6VLH1Y](https://www.amazon.com/dp/B0DD6VLH1Y) |
+| Sumitomo HM 090 OBD Connector set | [https://www.amazon.com/dp/B0FCLJP2ZY](https://www.amazon.com/dp/B0FCLJP2ZY) |
+| Shielded, double twisted pair wiring | [https://www.amazon.com/dp/B0FHPGN8M7](https://www.amazon.com/dp/B0FHPGN8M7) |
+| CR927 battery | [https://www.amazon.com/dp/B0DDSW4SF7](https://www.amazon.com/dp/B0DDSW4SF7) |
+
+Headless version (end user)
+
+| Item | Link |
+|---|---|
+| Waveshare ESP32-S3 CAN control board | [https://www.amazon.com/waveshare-Industrial-Interfaces-Connecting-Protection/dp/B0FNCWZ3D1](https://www.amazon.com/waveshare-Industrial-Interfaces-Connecting-Protection/dp/B0FNCWZ3D1) |
+| Sumitomo HM 090 OBD Connector set | [https://www.amazon.com/dp/B0FCLJP2ZY](https://www.amazon.com/dp/B0FCLJP2ZY) |
+| Shielded, double twisted pair wiring | [https://www.amazon.com/dp/B0FHPGN8M7](https://www.amazon.com/dp/B0FHPGN8M7) |
+
+[Back to Table of Contents](#contents)
+
 ## 3. Wiring
 
 Connect the ESP32 hardware to the OBD port:
@@ -62,6 +84,8 @@ You can make a T harness that leaves an OBD plug available for a scan tool or ot
 The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.amazon.com/dp/B0FCLJP2ZY) or many other retailers.
 
 > Connecting third-party devices to the diagnostic bus carries risk. Double-check polarity and pin assignments before powering up. Use a voltmeter to confirm power and ground is around 12VDC (positive). A high-impedance (digital) voltmeter can also be used to confirm CAN hi and low by connecting the voltmeter leads to the 2 CAN wires. It should read about 2.5VDC positive. If it shows negative then the positive lead is on the CAN low wire. 
+
+[Back to Table of Contents](#contents)
 
 ## 4. Installing the firmware
 
@@ -84,12 +108,16 @@ The connector is a Sumitomo HM 090. You can find kits on [Amazon](https://www.am
    In VS Code you can also use **Terminal → Run Task → Build/Upload Headless Hardware**.
 3. Do **not** use the `waveshare_esp32s3_43b_capture` environment for normal use. It is a diagnostic build that records every CAN frame.
 
+[Back to Table of Contents](#contents)
+
 ## 5. Installing the Android app
 
 - **Google Play:** install it from the [Play Store listing](https://play.google.com/store/apps/details?id=com.jroal.mobile_701_display).
 - **Sideload:** build with `flutter build apk --release` from `APK\mobile_701` and install the resulting `app-release.apk`.
 
 On first launch, allow the Bluetooth ("Nearby devices") permission when asked. If you enable the fuel-range overlay, you will also be asked for the "display over other apps" permission.
+
+[Back to Table of Contents](#contents)
 
 ## 6. First-time setup
 
@@ -100,6 +128,8 @@ On first launch, allow the Bluetooth ("Nearby devices") permission when asked. I
 5. **Pair the app:** open the Android app. It scans for a display named `Husky701-XXXXXX`. If more than one is nearby, open **Settings** (gear icon) and pick yours under "701 display to connect to". You should always select your specific ESP32 to connect to otherwise you risk connecting to another nearby ESP32. Start by letting it connect to any while your bike is the only one with the ESP32 on it in the area (within 200 feet or so). Then find which one it connected to and select that in the list. Once selected it will always look for only that ESP32. 
 6. Confirm the app's top-left status reads `BLE: connected`.
 
+[Back to Table of Contents](#contents)
+
 ## 7. Display screen reference
 
 The 4.3" display and the Android app show the same layout.
@@ -109,7 +139,7 @@ The 4.3" display and the Android app show the same layout.
 | **Fuel bar** and `E 1/4 1/2 3/4 F` scale | Top left | Estimated fuel remaining as a percent of the 13 L usable capacity. The percent is shown inside the bar. |
 | **FUEL: x.xx gal** | Top right | Estimated fuel remaining in US gallons. |
 | **Reset** button | Top centre | Tap after filling the tank (section 8.1). |
-| Date / time | Top right, under FUEL | Real-time clock (display build). Tap to set. |
+| **Date / time** | Top right, under FUEL | Real-time clock (display build). Tap to set. |
 | **TEMP: xx F** | Left, middle | Engine coolant temperature in °F. |
 | **GEAR: n** | Right, middle | Current gear (`N` = neutral). |
 | **RPM bar** and `xxxx RPM` | Centre | Engine speed. Bar colour: green below 8000, yellow 8000–9000, red above 9000. Scale ends at 10,000. |
@@ -119,9 +149,13 @@ The 4.3" display and the Android app show the same layout.
 | **ABS: ON / OFF-Road** | Bottom left | ABS mode reported by the bike. See the note below. |
 | **Off-road ABS** switch | Bottom centre | Requests off-road ABS mode (section 8.2). |
 | **CAN** | Bottom right | Green = receiving bike CAN data. Yellow = no data. On the display build, tap it to see versions. |
-| BLE status (app only) | Top left of the app | Search/connection state of the Bluetooth link. |
+| **BLE status (app only)** | Top left of the app | Search/connection state of the Bluetooth link. |
 
 > **ABS note:** The display shows only **ABS: ON** or **ABS: OFF-Road**. When the rider switches ABS completely off with the button, the bike does not broadcast that state in a way the display can read, so it will still show ON (or OFF-Road). Always refer to the bike's factory ABS indicator to ensure ABS state.
+
+> The Android app allows for selecting English or metric units.
+
+[Back to Table of Contents](#contents)
 
 ## 8. Functions and settings
 
@@ -133,6 +167,8 @@ The bike has no direct fuel-level signal on CAN, so the display **estimates** it
 - While you ride, the display subtracts the fuel the engine is using based on a simple speed-density engine model in the ESP32 (the data for the speed-density model is read over CAN using UDS).
 - The consumed fuel and distance are saved to flash when the engine stops, so the estimate survives key-off and power loss.
 - **ECON** and **RANGE** are derived from that fuel use and distance.
+
+The distance estimate has several factors leading to uncertainty and error. This makes the MPG and range estimates also have error. I have found these estimates tend to be to the lower side (less MPG and range than actual). This is better than error the other way. 
 
 Refuel the motorcycle and press **Reset** every time you refuel; otherwise the gauge will be inaccurate. Always fill the tank all the way full before clicking reset. On the Android app, the Reset button works the same way as long as it has an active BLE connection (BLE connected and green at the top, it is disabled while not connected).
 
@@ -149,14 +185,18 @@ Toggle **Off-road ABS** to have the bike start in off-road ABS mode at the next 
 3. The ABS indicator at the bottom left of the display should show **ABS: OFF-Road**.
 4. To return to normal ABS, turn the "Off-road ABS" switch **OFF** and key-cycle again. When you key back ON the ABS indicator should now show ON.
 
+The ABS module looks for this off-road mode request for a few seconds at startup. If it does not see the off-road mode request within a few seconds, the ABS will work normally (on-road mode) until key OFF. If the ABS does see the off-road mode request, it will switch to off-road mode and stay there until the next key cycle.
+
 How it works and safety rules:
 
 - The setting is saved on the ESP32 and is remembered.
 - At key-on the display sends the off-road request on the CAN bus. It **only transmits while the bike is stopped**.
 - It **will not transmit if another module (such as a Veridian cruise control or KTM ABS dongle) is already sending the request.** It listens first and stops immediately if another sender appears.
-- It stops sending if the bike moves.
+- It stops sending if the bike moves but the ABS mode will remain.
 - The switch also works from the Android app (when connected). The display and app stay in sync.
 - Always confirm ABS mode by observing the ABS light next to the motorcycle factory display. See the motorcycle owners manual for details. The motorcycle starts with the ABS light ON solid until you ride forward and the wheel speed sensors detect speed. Then the light turns OFF and stays OFF to indicate normal ABS mode (on-road mode). Off-road ABS mode is indicated by the light flashing slowly (a very brief flash once every 5 seconds). ABS OFF is indicated by the ABS light ON solid (no flashing) even after your ride forward.
+
+ABS mode switching demo: [https://youtu.be/ZTQ_GDK-LSc](https://youtu.be/ZTQ_GDK-LSc)
 
 ### 8.3 Setting the date and time (ESP32 with display only)
 
@@ -164,9 +204,13 @@ Tap the date/time on the display. A **Set date & time** panel appears with +/−
 
 The Android app does not show the clock.
 
+
+
 ### 8.4 About / version information (ESP32 with display only)
 
 Tap the **CAN** label (bottom right). The **About** dialog shows the firmware version and build, and the BLE protocol version. Tap the close button to dismiss.
+
+[Back to Table of Contents](#contents)
 
 ## 9. Android app settings
 
@@ -182,6 +226,10 @@ Tap the **gear icon** at the top right to open **Settings**:
 
 Use this app as the only display for the **headless** build, and as the place to read its versions.
 
+Video demonstration of Android app settings: [https://youtu.be/zHuzSz7Xirc](https://youtu.be/zHuzSz7Xirc)
+
+[Back to Table of Contents](#contents)
+
 ## 10. Versions and compatibility
 
 Three versions are tracked so the parts work together:
@@ -191,6 +239,8 @@ Three versions are tracked so the parts work together:
 - **Android App version** (for example `1.1.0+5`).
 
 The Android app accepts protocol versions 1 to 2. If the ESP32 firmware reports a protocol version the app does not support, update the app (or the firmware) so the versions are compatible. If you have issues you can check the **About** dialogs after updating either side.
+
+[Back to Table of Contents](#contents)
 
 ## 11. SD card logging (ESP32 with display only)
 
@@ -204,18 +254,54 @@ If you are using the ESP32 with the display you can also capture data and error 
 
 This feature is primarily used for development and troubleshooting. The headless ESP32 has no SD card slot or data logging capability. 
 
+[Back to Table of Contents](#contents)
+
 ## 12. Troubleshooting
 
 | Symptom | Check |
 |---|---|
-| `CAN` stays yellow | Key is ON? CAN High/Low wired correctly and not swapped? ABS ECU working? Power and ground solid? |
-| App says searching, never connects | Bluetooth on? Nearby-devices permission granted? ESP32 powered (key ON)? Close other apps connected to the display (only one BLE client at a time). |
+| `CAN` stays yellow | Key is ON? CAN High/Low wired correctly and not swapped? ABS ECU working? Power and ground solid? Kill switch ON? |
+| App says searching, never connects | Bluetooth on? Nearby-devices permission granted? ESP32 powered (key ON and kill switch in run)? Close other apps connected to the display (only one BLE client at a time). Is the ESP32 device powered (LED ON)?|
 | Wrong display chosen | Settings → "701 display to connect to" → pick the right `Husky701-XXXXXX`. |
 | Fuel gauge wrong | Press **Reset** only at a full tank. Re-fill and reset to recalibrate. |
-| Off-road ABS does not engage | Turn the switch on, then key off, wait a few seconds, and then key back on. The bike must be stopped. If a KTM ABS dongle or Veridian is already sending the request, the display deliberately does not send; enable it through the other device instead. |
+| Off-road ABS does not engage | Turn the switch on, then key off, wait a few seconds, and then key back on. The bike must be stopped. If an ABS dongle or Veridian Cruise with ABS add-on is already sending the request, the display deliberately does not send; enable it through the other device instead. |
 | ABS shows ON after switching ABS off with the button | Expected, see the ABS note in section 7. |
 | No SD logs | Card inserted before power-up? Reboot with the card in. Clock set? |
 | Time is wrong | Tap the date/time on the display and set it. |
 | Version mismatch | Compare the app and display **About** dialogs. Update whichever is older. |
 
-For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md).
+For more detail, see the [README](README.md), the [BLE protocol](Docs/BLE_Protocol.md) and the [changelog](changelog.md). Github repo is here: [https://github.com/jroal/701display](https://github.com/jroal/701display).
+
+[Back to Table of Contents](#contents)
+
+## 13. Disclaimer of Warranty and Limitation of Liability
+
+IMPORTANT: READ BEFORE USING THIS HARDWARE, FIRMWARE, OR APPLICATION.
+
+1. Provided "As-Is" Without Warranty
+
+    The Husky Display project—including all hardware schematics, firmware binaries, source code, Android applications, and documentation—is provided strictly on an "AS IS" and "AS AVAILABLE" basis, without warranties or conditions of any kind, either express or implied. This includes, but is not limited to, implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement.
+
+2. Informational Use Only & Primary Instrumentation
+
+    - Not an OEM Replacement: This system is designed solely as an experimental, secondary telemetry aid and virtual fuel computer. It does NOT replace your motorcycle’s original factory instrumentation, speedometer, low-fuel warning light, or primary diagnostic displays.
+
+    - Telemetry Accuracy: All calculated metrics—including but not limited to vehicle speed, engine RPM, remaining fuel volume, fuel consumption rates, estimated range, and gear selection—are approximations derived from empirical data and CAN bus telemetry. Do not rely on this product for critical navigation, speed limit compliance, or fuel management. Always monitor your motorcycle’s factory dash and physical fuel level.
+
+3. Rider Responsibility & Traffic Safety
+
+    - Safe Operation: The operator of the motorcycle assumes sole responsibility for safe riding, attention to road conditions, and adherence to all local traffic laws.
+
+    - Distraction Hazard: Interacting with, configuring, or looking at display screens, phones, or handlebar mounts while riding can cause severe distraction, accidents, bodily injury, or death. Never adjust settings or attempt to operate the application while the motorcycle is in motion.
+
+4. Vehicle Electrical & Engine Interfacing
+
+    - User Assumption of Risk: Connecting third-party devices or custom T-harnesses to your motorcycle's diagnostic (OBD2/Euro 5) CAN bus carries inherent risks, including potential electrical short circuits, battery drain, ECU communication faults, or voiding of vehicle manufacturer warranties.
+
+    - No Liability for Vehicle Damage: The developers, contributors, and copyright holders of this project shall not be held liable for any damage to your motorcycle, electronic control units (ECU), electrical harness, or connected peripherals resulting from the installation or use of this hardware or software.
+
+5. Limitation of Liability
+
+    To the maximum extent permitted by applicable law, in no event shall the authors, developers, or project contributors be liable for any direct, indirect, incidental, special, exemplary, punitive, or consequential damages (including, but not limited to, loss of use, personal injury, wrongful death, property damage, vehicle repair costs, or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this product, even if advised of the possibility of such damage.
+
+[Back to Table of Contents](#contents)
