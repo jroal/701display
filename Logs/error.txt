@@ -54,3 +54,61 @@
 [2026-11-01 11:00:43 UTC] TWAI: receive queue full; frames were dropped
 [2026-11-01 11:01:02 UTC] TWAI: receive queue full; frames were dropped
 [2026-11-01 11:01:13 UTC] TWAI: receive queue full; frames were dropped
+[2026-11-17 14:17:25 UTC] SD error log started
+[2026-11-17 14:17:24 UTC] BOOT: setup
+[2026-11-17 14:17:24 UTC] CONFIG: custom board enabled
+[2026-11-17 14:17:24 UTC] CONFIG: LCD enabled
+[2026-11-17 14:17:25 UTC] RTC: system clock synchronized from PCF85063A
+[2026-11-17 14:17:25 UTC] BOOT: UI ready
+[2026-11-17 14:17:25 UTC] UI: task entered
+[2026-11-17 14:17:25 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 14:17:25 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 14:17:25 UTC] CAN: side stand DOWN (0x540 byte4=0x10)
+[2026-11-17 14:17:25 UTC] OFFROAD: sending off-road ABS request
+[2026-11-17 14:17:25 UTC] /CAN11172026_1417.csv
+[2026-11-17 14:17:27 UTC] OFFROAD: sending (queued ok=21 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=86)
+[2026-11-17 14:17:29 UTC] OFFROAD: sending (queued ok=41 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=188)
+[2026-11-17 14:17:31 UTC] OFFROAD: sending (queued ok=61 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=263)
+[2026-11-17 14:17:33 UTC] OFFROAD: sending (queued ok=81 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=314)
+[2026-11-17 14:17:35 UTC] OFFROAD: sending (queued ok=101 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=362)
+[2026-11-17 14:17:37 UTC] OFFROAD: sending (queued ok=121 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=412)
+[2026-11-17 14:17:39 UTC] OFFROAD: sending (queued ok=141 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=449)
+[2026-11-17 14:17:41 UTC] OFFROAD: sending (queued ok=161 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=488)
+[2026-11-17 14:17:43 UTC] OFFROAD: sending (queued ok=181 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=525)
+[2026-11-17 14:17:45 UTC] OFFROAD: sending (queued ok=201 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=564)
+[2026-11-17 14:17:47 UTC] OFFROAD: sending (queued ok=221 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=602)
+[2026-11-17 14:17:49 UTC] OFFROAD: sending (queued ok=241 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=641)
+[2026-11-17 13:21:00 UTC] RTC: PCF85063A time updated
+[2026-11-17 13:21:01 UTC] OFFROAD: sending (queued ok=261 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=680)
+[2026-11-17 13:21:03 UTC] OFFROAD: sending (queued ok=281 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=720)
+[2026-11-17 13:21:05 UTC] OFFROAD: sending (queued ok=301 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=760)
+[2026-11-17 13:21:07 UTC] OFFROAD: sending (queued ok=321 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=800)
+[2026-11-17 13:21:09 UTC] OFFROAD: sending (queued ok=341 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=840)
+[2026-11-17 13:21:17 UTC] SD error log started
+[2026-11-17 13:21:16 UTC] BOOT: setup
+[2026-11-17 13:21:16 UTC] CONFIG: custom board enabled
+[2026-11-17 13:21:16 UTC] CONFIG: LCD enabled
+[2026-11-17 13:21:17 UTC] RTC: system clock synchronized from PCF85063A
+[2026-11-17 13:21:17 UTC] BOOT: UI ready
+[2026-11-17 13:21:17 UTC] UI: task entered
+[2026-11-17 13:21:17 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 13:21:17 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 13:21:17 UTC] CAN: side stand DOWN (0x540 byte4=0x10)
+[2026-11-17 13:21:17 UTC] OFFROAD: sending off-road ABS request
+[2026-11-17 13:21:17 UTC] /CAN11172026_1321.csv
+[2026-11-17 13:21:19 UTC] OFFROAD: sending (queued ok=21 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=44)
+[2026-11-17 13:21:20 UTC] OFFROAD: request turned off, stopping (queued ok=28 fail=0, hw tx_failed=0 tx_err=0 bus_err=0 arb_lost=61)
+[2026-11-17 13:21:20 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 13:23:48 UTC] SD error log started
+[2026-11-17 13:23:47 UTC] BOOT: setup
+[2026-11-17 13:23:47 UTC] CONFIG: custom board enabled
+[2026-11-17 13:23:47 UTC] CONFIG: LCD enabled
+[2026-11-17 13:23:48 UTC] RTC: system clock synchronized from PCF85063A
+[2026-11-17 13:23:48 UTC] BOOT: UI ready
+[2026-11-17 13:23:48 UTC] UI: task entered
+[2026-11-17 13:23:48 UTC] TWAI: started at 500 kbps, TX GPIO15, RX GPIO16, normal mode
+[2026-11-17 13:23:48 UTC] CAN: side stand UP (0x540 byte4=0x11)
+[2026-11-17 13:23:48 UTC] /CAN11172026_1323.csv
+[2026-11-17 13:29:17 UTC] TWAI: receive queue full; frames were dropped
+[2026-11-17 13:32:17 UTC] TWAI: receive queue full; frames were dropped
+[2026-11-17 13:33:47 UTC] FUEL(est): consumed=3.20052 L (3200.52 mL) dist=57.148 km rate=2.07 L/h MAP=37 kPa IAT=20 C

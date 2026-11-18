@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -38,6 +39,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   final RangeOverlay _overlay = RangeOverlay();
   bool _overlayEnabled = false;
   bool _inBackground = false;
+  bool _resettingFuel = false;
+  static const _fuelResetsChannel = MethodChannel('mobile_701/fuel_resets');
 
   @override
   void initState() {
@@ -635,10 +638,57 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
       borderRadius: BorderRadius.circular(4),
       child: InkWell(
         borderRadius: BorderRadius.circular(4),
-        onTap: enabled ? widget.ble.resetFuel : null,
+        onTap: enabled && !_resettingFuel ? _resetFuel : null,
         child: Center(child: _label(l10n.reset, 24, _cyan)),
       ),
     );
+  }
+
+  Future<void> _resetFuel() async {
+    final telemetry = widget.ble.telemetry;
+    final timestamp = DateTime.now().toUtc().toIso8601String();
+    final row =
+        '$timestamp,${telemetry.mpg.toStringAsFixed(1)},'
+        '${telemetry.fuelGallons.toStringAsFixed(4)}\n';
+    setState(() => _resettingFuel = true);
+    try {
+      try {
+        await widget.ble.resetFuel();
+      } catch (e) {
+        debugPrint('Fuel reset failed: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).fuelResetFailed),
+            ),
+          );
+        }
+        return;
+      }
+      try {
+        await _fuelResetsChannel.invokeMethod<void>('append', {'row': row});
+      } on PlatformException catch (e) {
+        debugPrint('Saving fuel reset failed: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).fuelResetLogFailed),
+            ),
+          );
+        }
+      } on MissingPluginException catch (e) {
+        debugPrint('Saving fuel reset failed: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).fuelResetLogFailed),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _resettingFuel = false);
+    }
   }
 
   static String _statusText(AppLocalizations l10n, BleStatus s) => switch (s) {

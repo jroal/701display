@@ -317,7 +317,7 @@ class BleClient extends ChangeNotifier {
   /// Equivalent of pressing Reset on the ESP32 display (refills the fuel tank).
   Future<void> resetFuel() async {
     final c = _commandChar;
-    if (c == null) return;
+    if (c == null) throw StateError('Not connected to a display');
     await c.write([cmdResetFuel]);
   }
 

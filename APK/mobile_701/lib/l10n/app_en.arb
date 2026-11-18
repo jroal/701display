@@ -137,6 +137,8 @@
   "fuelMarkerThreeQuarter": "3/4",
   "fuelMarkerFull": "F",
   "reset": "Reset",
+  "fuelResetFailed": "Fuel reset failed. Check the Bluetooth connection and try again.",
+  "fuelResetLogFailed": "Fuel was reset, but the record could not be saved to Downloads/FuelResets.csv.",
   "cancel": "Cancel",
   "addFuelTitle": "Add fuel",
   "addFuelPrompt": "Fuel to add",

@@ -400,6 +400,18 @@ abstract class AppLocalizations {
   /// **'Reset'**
   String get reset;
 
+  /// No description provided for @fuelResetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel reset failed. Check the Bluetooth connection and try again.'**
+  String get fuelResetFailed;
+
+  /// No description provided for @fuelResetLogFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel was reset, but the record could not be saved to Downloads/FuelResets.csv.'**
+  String get fuelResetLogFailed;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

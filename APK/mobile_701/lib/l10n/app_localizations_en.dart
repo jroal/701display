@@ -187,6 +187,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reset => 'Reset';
 
   @override
+  String get fuelResetFailed =>
+      'Fuel reset failed. Check the Bluetooth connection and try again.';
+
+  @override
+  String get fuelResetLogFailed =>
+      'Fuel was reset, but the record could not be saved to Downloads/FuelResets.csv.';
+
+  @override
   String get cancel => 'Cancel';
 
   @override
